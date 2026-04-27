@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Đức Thuật Pro - Batch + Vị trí thật tự động (Đã sửa lỗi ảnh)</title>
+<title>Đức Thuật Pro - Batch + Vị trí thật (Gộp cỡ chữ địa chỉ)</title>
 <!-- Leaflet -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -165,7 +165,7 @@ canvas:active { cursor: grabbing; }
 <body>
 
 <div class="controls">
-<h3 style="margin:0 0 15px; color:#f5b400;">📸 Đức Thuật Pro - Xử lý nhiều ảnh + Vị trí thật tự động</h3>
+<h3 style="margin:0 0 15px; color:#f5b400;">📸 Đức Thuật Pro - Xử lý nhiều ảnh + Vị trí thật (Gộp cỡ chữ địa chỉ)</h3>
 <div class="row">
     <label>📂 Chọn ảnh (nhiều):</label>
     <input type="file" id="uploadMultiple" accept="image/*" multiple>
@@ -213,8 +213,7 @@ canvas:active { cursor: grabbing; }
     <label>Font giờ:</label>
     <select id="timeFontSelect"><option value="Inter">Inter</option><option value="Bebas Neue">Bebas Neue</option></select>
 </div>
-<div class="slider-row"><label>📏 Cỡ chữ địa chỉ (dòng trên):</label><input type="range" id="leftScale" min="0.6" max="1.5" value="1.0" step="0.01"></div>
-<div class="slider-row"><label>📏 Cỡ chữ địa chỉ (dòng dưới):</label><input type="range" id="bottomScale" min="0.6" max="1.5" value="1.0" step="0.01"></div>
+<div class="slider-row"><label>📏 Cỡ chữ địa chỉ (chung cả 2 dòng):</label><input type="range" id="addrFontScale" min="0.6" max="1.5" value="1.0" step="0.01"></div>
 <div class="slider-row"><label>🕒 Cỡ giờ:</label><input type="range" id="timeScale" min="0.5" max="2.0" value="1.0" step="0.01"></div>
 <div class="slider-row"><label>📅 Cỡ ngày/thứ:</label><input type="range" id="dateScale" min="0.5" max="1.8" value="1.0" step="0.01"></div>
 <div class="slider-row"><label>📏 Cỡ logo:</label><input type="range" id="rightScale" min="0.5" max="2.0" value="1.0" step="0.01"></div>
@@ -277,7 +276,6 @@ let defaultImg = new Image();
 defaultImg.crossOrigin = "Anonymous";
 defaultImg.src = "https://i.postimg.cc/Bt1xMVQ8/IMG-2821.jpg";
 defaultImg.onload = () => {
-    // Nếu chưa có ảnh nào, tạo một ảnh ảo để hiển thị
     if(images.length === 0) {
         let dummyId = -1;
         images.push({
@@ -325,7 +323,7 @@ function autoWrapAddress() {
 document.getElementById('address').addEventListener('blur', autoWrapAddress);
 document.getElementById('maxLineLength').addEventListener('input', autoWrapAddress);
 
-// ---------- GPS TỰ ĐỘNG (vị trí thật nếu chưa chỉnh sửa) ----------
+// ---------- GPS TỰ ĐỘNG ----------
 async function fetchRealLocationAndUpdate() {
     if (!navigator.geolocation) {
         document.getElementById('status').innerHTML = "⚠️ Trình duyệt không hỗ trợ GPS tự động.";
@@ -348,7 +346,6 @@ async function fetchRealLocationAndUpdate() {
         }, { timeout: 8000 });
     });
 }
-
 function tryAutoSetRealLocation() {
     if (!isCoordManuallyEdited && navigator.geolocation) {
         fetchRealLocationAndUpdate();
@@ -356,21 +353,18 @@ function tryAutoSetRealLocation() {
         document.getElementById('status').innerHTML = "ℹ️ Đã bỏ qua tự động GPS vì bạn đã chỉnh sửa tọa độ thủ công.";
     }
 }
-
 function resetToRealLocation() {
     isCoordManuallyEdited = false;
     fetchRealLocationAndUpdate().then(() => {
         if (currentImgId !== null) drawCurrentImage();
     });
 }
-
 function markManualCoordChange() {
     isCoordManuallyEdited = true;
     gpsText = document.getElementById('manualCoord').value.trim();
     if (currentImgId !== null) drawCurrentImage();
     document.getElementById('status').innerHTML = "✏️ Đã chỉnh sửa tọa độ thủ công, tự động GPS sẽ tạm ngưng.";
 }
-
 document.getElementById('applyManualBtn').onclick = () => {
     markManualCoordChange();
     let val = document.getElementById('manualCoord').value.trim();
@@ -379,12 +373,10 @@ document.getElementById('applyManualBtn').onclick = () => {
 };
 document.getElementById('resetRealLocationBtn').onclick = () => resetToRealLocation();
 document.getElementById('manualCoord').addEventListener('change', markManualCoordChange);
-
 window.getCurrentPosition = function() {
     isCoordManuallyEdited = false;
     fetchRealLocationAndUpdate();
 };
-
 async function updateMapLocation(lat, lng) {
     if (!map) return;
     map.setView([lat, lng], 14);
@@ -400,7 +392,6 @@ async function updateMapLocation(lat, lng) {
         }
     } catch(e) { console.warn(e); }
 }
-
 window.searchMap = async function() {
     let query = document.getElementById('mapSearch').value;
     if (!query) return;
@@ -419,7 +410,6 @@ window.searchMap = async function() {
         } else alert("Không tìm thấy");
     } catch(e) { alert("Lỗi tìm kiếm"); }
 };
-
 function initMap() {
     map = L.map('map').setView([12.238791, 109.196749], 6);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
@@ -568,14 +558,13 @@ function setCurrentImage(id) {
     drawCurrentImage();
 }
 
-// HÀM VẼ ẢNH HIỆN TẠI (sửa lỗi thiếu control)
+// HÀM VẼ ẢNH HIỆN TẠI (đã gộp cỡ chữ địa chỉ)
 function drawCurrentImage() {
     let imgObj = images.find(i => i.id === currentImgId);
     if (!imgObj) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(imgObj.imgElement, 0, 0, canvas.width, canvas.height);
     
-    // Lấy giá trị an toàn, nếu thiếu thì dùng mặc định
     const getVal = (id, def) => {
         let el = document.getElementById(id);
         return el ? parseFloat(el.value) : def;
@@ -593,8 +582,7 @@ function drawCurrentImage() {
         return el ? el.value : def;
     };
     
-    let leftScale = getVal('leftScale', 1.0);
-    let bottomScale = getVal('bottomScale', 1.0);
+    let addrFontScale = getVal('addrFontScale', 1.0);   // thanh duy nhất cho cả 2 dòng
     let timeScale = getVal('timeScale', 1.0);
     let dateScale = getVal('dateScale', 1.0);
     let rightScale = getVal('rightScale', 1.0);
@@ -609,8 +597,9 @@ function drawCurrentImage() {
     let timeFontSize = 100 * (canvas.height/1080) * timeScale;
     let dateFontSize = 30 * (canvas.height/1080) * dateScale;
     let dayFontSize = 26 * (canvas.height/1080) * dateScale;
-    let addrFontSizeTop = 24 * (canvas.height/1080) * leftScale;
-    let addrFontSizeBottom = 24 * (canvas.height/1080) * bottomScale;
+    // Áp dụng cùng 1 hệ số cho cả 2 dòng địa chỉ
+    let addrFontSizeTop = 24 * (canvas.height/1080) * addrFontScale;
+    let addrFontSizeBottom = 24 * (canvas.height/1080) * addrFontScale;
     let logoFontSize = 28 * (canvas.width/1080) * rightScale;
     let subFontSize = 20 * (canvas.width/1080);
     let fontFamily = getSelect('fontSelect', 'Inter');
@@ -753,8 +742,7 @@ document.getElementById('saveSettingsBtn').onclick = () => {
         swapLogo: document.getElementById('swapLogoColor').checked,
         addrColor: document.getElementById('addrColor').value,
         verticalNote: document.getElementById('verticalNote').value,
-        leftScale: document.getElementById('leftScale').value,
-        bottomScale: document.getElementById('bottomScale').value,
+        addrFontScale: document.getElementById('addrFontScale').value,
         timeScale: document.getElementById('timeScale').value,
         dateScale: document.getElementById('dateScale').value,
         rightScale: document.getElementById('rightScale').value,
@@ -791,8 +779,7 @@ function loadSettings() {
         if(s.swapLogo !== undefined) document.getElementById('swapLogoColor').checked = s.swapLogo;
         if(s.addrColor) document.getElementById('addrColor').value = s.addrColor;
         if(s.verticalNote) document.getElementById('verticalNote').value = s.verticalNote;
-        if(s.leftScale) document.getElementById('leftScale').value = s.leftScale;
-        if(s.bottomScale) document.getElementById('bottomScale').value = s.bottomScale;
+        if(s.addrFontScale) document.getElementById('addrFontScale').value = s.addrFontScale;
         if(s.timeScale) document.getElementById('timeScale').value = s.timeScale;
         if(s.dateScale) document.getElementById('dateScale').value = s.dateScale;
         if(s.rightScale) document.getElementById('rightScale').value = s.rightScale;
@@ -857,7 +844,7 @@ window.addEventListener('load', () => {
     setTimeout(() => {
         if(!isCoordManuallyEdited) tryAutoSetRealLocation();
     }, 1000);
-    // Đảm bảo các control bổ sung có mặt (nếu thiếu thì tạo)
+    // Bổ sung các control ẩn nếu thiếu
     let needed = ['fontWeight','timeFontWeight','fontItalic','timeFontItalic','logoFontWeight','logoFontItalic'];
     needed.forEach(id => {
         if(!document.getElementById(id)){
@@ -869,7 +856,6 @@ window.addEventListener('load', () => {
             document.body.appendChild(input);
         }
     });
-    // Thêm progress bar nếu chưa có
     if(!document.querySelector('.progress-bar')) {
         let pb = document.createElement('div');
         pb.className = 'progress-bar';
