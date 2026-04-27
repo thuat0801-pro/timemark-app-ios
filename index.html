@@ -609,3 +609,262 @@ function drawTextOverlay(){
     let dayY = barTop + dayAscent;
     
     ctx.font = `500 ${dateFontSize}px ${fontFamily}`;
+    let dateMetrics = ctx.measureText(dateStr);
+    let dateDescent = dateMetrics.actualBoundingBoxDescent || dateFontSize*0.2;
+    let dateY = barBottom - dateDescent;
+    
+    ctx.shadowColor = `rgba(0,0,0,${shadowOpacity})`;
+    ctx.shadowBlur = 8;
+    let commonColor = `rgba(255,255,220,${textOpacity*0.92})`;
+    ctx.fillStyle = commonColor;
+    ctx.fillText(dayStr, rightColX, dayY);
+    ctx.fillStyle = commonColor;
+    ctx.fillText(dateStr, rightColX, dateY);
+    
+    // 4. Vẽ giờ (màu trắng)
+    ctx.font = `700 ${timeFontSize}px ${timeFontFamily}`;
+    ctx.fillStyle = `rgba(255,255,255,${textOpacity})`;
+    let timeY = leftBlockY + timeAscent;
+    ctx.fillText(timeStr, leftBlockX, timeY);
+    
+    // 5. Địa chỉ (cách chữ Thứ)
+    let dayBaseline = dayY - dayAscent;
+    let addrStartY = dayBaseline + dayFontSize + addrMarginTop;
+    ctx.font = `400 ${24 * (canvas.height/1080) * addrFontScale}px ${fontFamily}`;
+    let rgbAddr = parseInt(addrColor.slice(1,3),16)+','+parseInt(addrColor.slice(3,5),16)+','+parseInt(addrColor.slice(5,7),16);
+    ctx.fillStyle = `rgba(${rgbAddr},${textOpacity*0.85})`;
+    ctx.fillText(addrLines[0], leftBlockX, addrStartY);
+    if(addrLines[1] && addrLines[1].trim() !== ""){
+        let addrFontSizePx = 24 * (canvas.height/1080) * addrFontScale;
+        ctx.fillText(addrLines[1], leftBlockX, addrStartY + addrFontSizePx + 6);
+    }
+    
+    // 6. Logo góc phải
+    if(logoText){
+        let logoFontSizePx = 28 * (canvas.width/1080) * rightScale;
+        let subFontSize = 20 * (canvas.width/1080);
+        ctx.font = `700 ${logoFontSizePx}px ${fontFamily}`;
+        ctx.textAlign = 'right';
+        let logoX = canvas.width - 20;
+        let logoYBase = canvas.height - 20;
+        let logoY = logoYBase - subFontSize - 8;
+        if(logoText.toLowerCase().startsWith('time')){
+            let t = logoText.substring(0,4), m = logoText.substring(4);
+            let w = ctx.measureText(m).width;
+            let col1=swapLogo?logoColor2:logoColor1, col2=swapLogo?logoColor1:logoColor2;
+            ctx.fillStyle = col2; ctx.fillText(m, logoX, logoY);
+            ctx.fillStyle = col1; ctx.fillText(t, logoX - w, logoY);
+        } else { ctx.fillStyle = logoColor1; ctx.fillText(logoText, logoX, logoY); }
+        ctx.font = `400 ${subFontSize}px ${fontFamily}`;
+        ctx.fillStyle = `rgba(255,255,255,${textOpacity*0.7})`;
+        ctx.fillText('100% Chân thực', logoX, logoYBase);
+        ctx.textAlign = 'left';
+    }
+    
+    // 7. GPS
+    if(showGps && gpsText){
+        ctx.font = `400 ${20*(canvas.height/1080)}px ${fontFamily}`;
+        ctx.fillStyle = `rgba(160,220,255,${textOpacity})`;
+        ctx.fillText(gpsText, leftBlockX, canvas.height - 15);
+    }
+    
+    // 8. Ghi chú dọc
+    if(verticalNote){
+        ctx.save();
+        ctx.font = `500 ${noteFontSize}px ${fontFamily}`;
+        ctx.fillStyle = `rgba(255,255,255,${textOpacity*0.85})`;
+        ctx.translate(canvas.width - notePadding, canvas.height/2);
+        ctx.rotate(-Math.PI/2);
+        ctx.textAlign = 'center';
+        ctx.fillText('🛡️✓ '+verticalNote, 0, 0);
+        ctx.restore();
+    }
+    ctx.shadowColor = 'transparent';
+}
+
+function drawCurrentImage(){
+    let imgObj = images.find(i=>i.id===currentImgId);
+    if(!imgObj) return;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.drawImage(imgObj.imgElement,0,0,canvas.width,canvas.height);
+    drawTextOverlay();
+}
+
+// ========== KÉO THẢ ==========
+function handleDragStart(e){
+    dragging = true;
+    let rect = canvas.getBoundingClientRect();
+    let cx = e.clientX??(e.touches?e.touches[0].clientX:0);
+    let cy = e.clientY??(e.touches?e.touches[0].clientY:0);
+    let mx = (cx - rect.left) * (canvas.width/rect.width);
+    let my = (cy - rect.top) * (canvas.height/rect.height);
+    dragStartRelX = mx - leftBlockX;
+    dragStartRelY = my - leftBlockY;
+}
+function handleDragMove(e){
+    if(!dragging) return;
+    let rect = canvas.getBoundingClientRect();
+    let cx = e.clientX??(e.touches?e.touches[0].clientX:0);
+    let cy = e.clientY??(e.touches?e.touches[0].clientY:0);
+    let mx = (cx - rect.left) * (canvas.width/rect.width);
+    let my = (cy - rect.top) * (canvas.height/rect.height);
+    let newX = mx - dragStartRelX;
+    let newY = my - dragStartRelY;
+    newX = Math.min(Math.max(newX,10), canvas.width-200);
+    newY = Math.min(Math.max(newY,20), canvas.height-150);
+    leftBlockX = newX;
+    leftBlockY = newY;
+    relX = leftBlockX / canvas.width;
+    relY = leftBlockY / canvas.height;
+    drawCurrentImage();
+}
+function handleDragEnd(){ dragging=false; }
+canvas.addEventListener('mousedown', handleDragStart);
+canvas.addEventListener('mousemove', handleDragMove);
+canvas.addEventListener('mouseup', handleDragEnd);
+canvas.addEventListener('touchstart', (e)=>{ e.preventDefault(); handleDragStart(e); }, {passive:false});
+canvas.addEventListener('touchmove', (e)=>{ e.preventDefault(); handleDragMove(e); }, {passive:false});
+canvas.addEventListener('touchend', handleDragEnd);
+
+// ========== LƯU CÀI ĐẶT ==========
+document.getElementById('saveSettingsBtn').onclick = ()=>{
+    let s = {
+        address: document.getElementById('address').value,
+        manualCoord: document.getElementById('manualCoord').value,
+        useStaticTime: document.getElementById('useStaticTime').checked,
+        staticDate: document.getElementById('staticDate').value,
+        staticHour: document.getElementById('staticHour').value,
+        staticMinute: document.getElementById('staticMinute').value,
+        staticSecond: document.getElementById('staticSecond').value,
+        logoText: document.getElementById('logoText').value,
+        logoColor1: document.getElementById('logoColor1').value,
+        logoColor2: document.getElementById('logoColor2').value,
+        swapLogo: document.getElementById('swapLogoColor').checked,
+        addrColor: document.getElementById('addrColor').value,
+        verticalNote: document.getElementById('verticalNote').value,
+        addrFontScale: getVal('addrFontScale',1),
+        timeScale: getVal('timeScale',1),
+        dateScale: getVal('dateScale',1),
+        rightScale: getVal('rightScale',1),
+        barWidth: getVal('barWidth',4),
+        addrMargin: getVal('addrMargin',20),
+        textOpacity: getVal('textOpacity',1),
+        shadowOpacity: getVal('shadowOpacity',0.8),
+        noteFontSize: getVal('noteFontSize',18),
+        maxLineLength: getVal('maxLineLength',50),
+        fontSelect: getSelect('fontSelect','Inter'),
+        timeFontSelect: getSelect('timeFontSelect','Bebas Neue'),
+        showGps: getChecked('showGpsCheckbox',true),
+        relX, relY
+    };
+    localStorage.setItem('ducthuatSettings', JSON.stringify(s));
+    alert('Đã lưu cài đặt');
+};
+function loadSettings(){
+    let s = localStorage.getItem('ducthuatSettings');
+    if(s){
+        let c = JSON.parse(s);
+        if(c.address) document.getElementById('address').value = c.address;
+        if(c.manualCoord) { document.getElementById('manualCoord').value = c.manualCoord; gpsText=c.manualCoord; isCoordManuallyEdited=true; }
+        if(c.useStaticTime!==undefined) document.getElementById('useStaticTime').checked = c.useStaticTime;
+        if(c.staticDate) document.getElementById('staticDate').value = c.staticDate;
+        if(c.staticHour) document.getElementById('staticHour').value = c.staticHour;
+        if(c.staticMinute) document.getElementById('staticMinute').value = c.staticMinute;
+        if(c.staticSecond) document.getElementById('staticSecond').value = c.staticSecond;
+        if(c.logoText) document.getElementById('logoText').value = c.logoText;
+        if(c.logoColor1) document.getElementById('logoColor1').value = c.logoColor1;
+        if(c.logoColor2) document.getElementById('logoColor2').value = c.logoColor2;
+        if(c.swapLogo!==undefined) document.getElementById('swapLogoColor').checked = c.swapLogo;
+        if(c.addrColor) document.getElementById('addrColor').value = c.addrColor;
+        if(c.verticalNote) document.getElementById('verticalNote').value = c.verticalNote;
+        if(c.addrFontScale) document.getElementById('addrFontScale').value = c.addrFontScale;
+        if(c.timeScale) document.getElementById('timeScale').value = c.timeScale;
+        if(c.dateScale) document.getElementById('dateScale').value = c.dateScale;
+        if(c.rightScale) document.getElementById('rightScale').value = c.rightScale;
+        if(c.barWidth) document.getElementById('barWidth').value = c.barWidth;
+        if(c.addrMargin) document.getElementById('addrMargin').value = c.addrMargin;
+        if(c.textOpacity) document.getElementById('textOpacity').value = c.textOpacity;
+        if(c.shadowOpacity) document.getElementById('shadowOpacity').value = c.shadowOpacity;
+        if(c.noteFontSize) document.getElementById('noteFontSize').value = c.noteFontSize;
+        if(c.maxLineLength) document.getElementById('maxLineLength').value = c.maxLineLength;
+        if(c.fontSelect) document.getElementById('fontSelect').value = c.fontSelect;
+        if(c.timeFontSelect) document.getElementById('timeFontSelect').value = c.timeFontSelect;
+        if(c.showGps!==undefined) document.getElementById('showGpsCheckbox').checked = c.showGps;
+        if(c.relX) relX = c.relX;
+        if(c.relY) relY = c.relY;
+        updateCurrentTime();
+        if(currentImgId!==null) drawCurrentImage();
+    }
+}
+
+// ========== BATCH ZIP ==========
+document.getElementById('processAllZipBtn').onclick = async ()=>{
+    let real = images.filter(i=>!i.isDefault);
+    if(real.length===0){ alert("Chưa có ảnh nào để xử lý!"); return; }
+    let zip = new JSZip();
+    let total = real.length, processed=0;
+    let pb = document.getElementById('progressBar'); pb.style.display='block';
+    let fill = document.querySelector('.progress-fill');
+    for(let img of real){
+        currentImgId = img.id;
+        drawCurrentImage();
+        await new Promise(r=>setTimeout(r,30));
+        let dataURL = canvas.toDataURL('image/png');
+        let base64 = dataURL.split(',')[1];
+        zip.file(`${img.name.replace(/\.[^/.]+$/, '')}_timemark.png`, base64, {base64:true});
+        processed++;
+        fill.style.width = (processed/total*100)+'%';
+    }
+    let content = await zip.generateAsync({type:'blob'});
+    let link = document.createElement('a');
+    link.href = URL.createObjectURL(content);
+    link.download = `ducthuat_batch_${Date.now()}.zip`;
+    link.click();
+    pb.style.display='none';
+    alert("Đã xuất ZIP thành công!");
+};
+document.getElementById('downloadCurrentBtn').onclick = ()=>{
+    if(!currentImgId){ alert("Chưa chọn ảnh"); return; }
+    let link = document.createElement('a');
+    link.download = `timemark_${Date.now()}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+};
+document.getElementById('shareZaloBtn').onclick = async ()=>{
+    if(!currentImgId){ alert("Chưa có ảnh để chia sẻ"); return; }
+    try{
+        let blob = await new Promise(resolve=>canvas.toBlob(resolve, 'image/png'));
+        let file = new File([blob], 'timemark.png', {type:'image/png'});
+        if(navigator.canShare && navigator.canShare({files:[file]})){
+            await navigator.share({ files:[file], title:'Timemark', text:'Ảnh timemark từ Đức Thuật Pro' });
+            document.getElementById('status').innerHTML = "✅ Đã chia sẻ thành công";
+        } else {
+            alert("Trình duyệt không hỗ trợ chia sẻ trực tiếp. Bạn có thể tải ảnh về và gửi thủ công qua Zalo.");
+        }
+    }catch(e){
+        if(e.message && e.message.includes('canceled')) document.getElementById('status').innerHTML = "⚠️ Hủy chia sẻ";
+        else alert("Lỗi chia sẻ: "+e.message);
+    }
+};
+
+// ========== KHỞI TẠO ==========
+window.addEventListener('load', ()=>{
+    initMap();
+    loadSettings();
+    setTimeout(()=>{ if(!isCoordManuallyEdited) fetchRealLocation(); }, 1000);
+    if(!document.querySelector('.progress-bar')){
+        let pb = document.createElement('div'); pb.className='progress-bar'; pb.id='progressBar'; pb.innerHTML='<div class="progress-fill"></div>';
+        document.querySelector('.controls').appendChild(pb);
+        pb.style.display='none';
+    }
+    document.getElementById('progressBar').style.display='none';
+    ['fontWeight','timeFontWeight','fontItalic','timeFontItalic','logoFontWeight','logoFontItalic'].forEach(id=>{
+        if(!document.getElementById(id)){
+            let inp = document.createElement('input'); inp.type='hidden'; inp.id=id; inp.value= id.includes('Italic')?'false':'700';
+            document.body.appendChild(inp);
+        }
+    });
+});
+</script>
+</body>
+</html>
