@@ -242,7 +242,7 @@ canvas:active { cursor: grabbing; }
 <div class="row">
     <button id="saveSettingsBtn">💾 Lưu cài đặt</button>
     <button id="downloadCurrentBtn" style="background:#2e7d32;">📥 Tải ảnh này (PNG)</button>
-    <button id="shareZaloBtn" style="background:#0068ff; color:white;">💬 Gửi ảnh này qua Zalo</button>
+    <button id="shareZaloBtn" style="background:#0068ff; color:white;">💬 Gửi ảnh qua Zalo</button>
     <button id="processAllZipBtn" style="background:#f57c00;">📦 XỬ LÝ TẤT CẢ & TẢI ZIP</button>
 </div>
 <div id="status" style="background:#000000aa; padding:8px; border-radius:30px; text-align:center; margin-top:10px;">✅ Sẵn sàng. Chọn ảnh để bắt đầu.</div>
@@ -830,14 +830,17 @@ document.getElementById('downloadCurrentBtn').onclick = ()=>{
     link.href = canvas.toDataURL('image/png');
     link.click();
 };
+
+// ========== CHIA SẺ ZALO - CHỈ ẢNH, KHÔNG GHI CHÚ ==========
 document.getElementById('shareZaloBtn').onclick = async ()=>{
     if(!currentImgId){ alert("Chưa có ảnh để chia sẻ"); return; }
     try{
         let blob = await new Promise(resolve=>canvas.toBlob(resolve, 'image/png'));
         let file = new File([blob], 'timemark.png', {type:'image/png'});
         if(navigator.canShare && navigator.canShare({files:[file]})){
-            await navigator.share({ files:[file], title:'Timemark'});
-            document.getElementById('status').innerHTML = "✅ Đã chia sẻ thành công";
+            // Chỉ chia sẻ file ảnh, không có title hay text
+            await navigator.share({ files: [file] });
+            document.getElementById('status').innerHTML = "✅ Đã chia sẻ ảnh thành công";
         } else {
             alert("Trình duyệt không hỗ trợ chia sẻ trực tiếp. Bạn có thể tải ảnh về và gửi thủ công qua Zalo.");
         }
