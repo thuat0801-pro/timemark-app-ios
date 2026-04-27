@@ -3,19 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Đức Thuật Pro - Fake Timemark (Hỗ trợ xử lý nhiều ảnh)</title>
-<!-- Leaflet CSS + JS -->
+<title>Đức Thuật Pro - Batch + Vị trí thật tự động (Đã sửa lỗi ảnh)</title>
+<!-- Leaflet -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<!-- JSZip để nén nhiều ảnh -->
+<!-- JSZip -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <!-- Google Fonts -->
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&family=Montserrat:wght@400;500;700;800&family=Roboto:wght@400;500;700&family=Bebas+Neue&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&family=Montserrat:wght@400;700&family=Roboto&family=Bebas+Neue&family=Lato&display=swap" rel="stylesheet">
 <style>
-/* Giữ nguyên style cũ, thêm một số style mới cho danh sách ảnh */
+* {
+    box-sizing: border-box;
+}
 body {
     font-family: 'Inter', sans-serif;
-    background: url('https://i.postimg.cc/Bt1xMVQ8/IMG-2821.jpg') no-repeat center center fixed;
+    background: url('https://i.postimg.cc/Bt1xMVQ8/IMG-2821.jpg') no-repeat center fixed;
     background-size: cover;
     margin: 0;
     padding: 10px;
@@ -24,11 +26,8 @@ body {
 body::before {
     content: "";
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.55);
     pointer-events: none;
     z-index: 0;
 }
@@ -37,156 +36,79 @@ body::before {
     z-index: 2;
 }
 .controls {
-    background: rgba(30, 30, 30, 0.9);
-    backdrop-filter: blur(8px);
-    border-radius: 16px;
+    background: rgba(30,30,30,0.92);
+    backdrop-filter: blur(10px);
+    border-radius: 24px;
     padding: 20px;
-    max-width: 1000px;
+    max-width: 1100px;
     margin: 0 auto 15px;
     border: 1px solid #f5b400;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
 }
-.row {
+.row, .slider-row, .checkbox-row, .color-row {
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
     margin-bottom: 12px;
-    justify-content: center;
     align-items: center;
+    justify-content: center;
+}
+.slider-row, .checkbox-row, .color-row {
+    background: #252525cc;
+    padding: 8px 15px;
+    border-radius: 40px;
 }
 label {
     color: #f5b400;
     font-weight: bold;
-    font-size: 14px;
-    min-width: 120px;
-    text-align: left;
+    min-width: 110px;
+    font-size: 13px;
 }
 input, textarea, select, button {
-    padding: 12px;
-    border-radius: 12px;
+    padding: 10px 14px;
+    border-radius: 40px;
     border: 1px solid #444;
     background: #2a2a2a;
     color: white;
     font-size: 14px;
-    outline: none;
 }
 textarea {
-    width: 100%;
-    border-color: #f5b400;
-    min-height: 60px;
+    border-radius: 20px;
+    background: #1e1e1e;
 }
 button {
     background: #f5b400;
     color: #000;
-    font-weight: 900;
-    border: none;
+    font-weight: bold;
     cursor: pointer;
     transition: 0.2s;
+    border: none;
 }
-button:active { transform: scale(0.97); }
-.slider-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    background: #252525cc;
-    padding: 10px 15px;
-    border-radius: 30px;
-    margin: 8px 0;
-}
-.slider-row input { flex: 1; accent-color: #f5b400; }
-.checkbox-row, .color-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    background: #252525cc;
-    padding: 10px 15px;
-    border-radius: 30px;
-    margin: 8px 0;
-}
-.checkbox-row label { min-width: auto; }
-.canvas-container {
-    position: relative;
-    display: inline-block;
-    max-width: 100%;
-    margin-top: 10px;
-    background: rgba(0,0,0,0.5);
-    border-radius: 8px;
-    padding: 8px;
-}
+button:active { transform: scale(0.96); }
 canvas {
     max-width: 100%;
-    border-radius: 8px;
-    box-shadow: 0 0 20px rgba(0,0,0,0.5);
-    touch-action: none;
+    border-radius: 16px;
+    box-shadow: 0 0 20px black;
     cursor: grab;
     display: block;
     margin: 0 auto;
+    background: #222;
 }
 canvas:active { cursor: grabbing; }
-.scroll-top-btn {
-    position: absolute;
-    top: 15px;
-    right: 15px;
-    background: #f5b400;
-    border-radius: 50%;
-    width: 44px;
-    height: 44px;
-    font-size: 24px;
-    font-weight: bold;
-    cursor: pointer;
-    z-index: 10;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
 #map {
-    height: 300px;
+    height: 280px;
     width: 100%;
-    border-radius: 12px;
-    margin-top: 15px;
+    border-radius: 20px;
+    margin: 15px 0 8px;
     border: 1px solid #f5b400;
 }
-.map-controls {
-    display: flex;
-    gap: 10px;
-    margin-top: 8px;
-    justify-content: flex-end;
-}
-.map-controls button { background: #0288d1; color: white; padding: 8px 16px; }
-#status {
-    color: #f5b400;
-    font-size: 13px;
-    margin-top: 10px;
-    background: rgba(0,0,0,0.5);
-    padding: 6px;
-    border-radius: 12px;
-    text-align: center;
-}
-.footer-logo {
-    text-align: center;
-    margin: 30px auto 0;
-    padding: 20px;
-    background: rgba(0,0,0,0.6);
-    border-radius: 16px;
-    max-width: 1000px;
-    backdrop-filter: blur(4px);
-}
-/* Panel quản lý nhiều ảnh */
 .image-list-panel {
-    background: rgba(0,0,0,0.7);
-    border-radius: 16px;
+    background: rgba(0,0,0,0.75);
+    border-radius: 24px;
     padding: 15px;
     margin: 15px auto;
-    max-width: 1000px;
-    backdrop-filter: blur(5px);
+    max-width: 1100px;
+    backdrop-filter: blur(6px);
     border: 1px solid #f5b400;
-}
-.image-list-panel h4 {
-    color: #f5b400;
-    margin: 0 0 10px 0;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
 }
 .thumb-list {
     display: flex;
@@ -196,288 +118,765 @@ canvas:active { cursor: grabbing; }
     overflow-x: auto;
     padding: 8px;
     background: #1e1e1ecc;
-    border-radius: 12px;
+    border-radius: 20px;
 }
 .thumb-item {
     position: relative;
     width: 100px;
     height: 100px;
     border: 2px solid #f5b400;
-    border-radius: 8px;
+    border-radius: 12px;
     overflow: hidden;
     cursor: pointer;
     background: #2a2a2a;
     flex-shrink: 0;
 }
-.thumb-item img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
+.thumb-item img { width:100%; height:100%; object-fit: cover; }
 .thumb-item .delete-btn {
-    position: absolute;
-    top: 2px;
-    right: 2px;
+    position: absolute; top: 2px; right: 2px;
     background: rgba(0,0,0,0.7);
-    color: #ff4444;
+    color: #ff5555;
     border-radius: 50%;
-    width: 22px;
-    height: 22px;
-    font-size: 16px;
+    width: 22px; height: 22px;
     text-align: center;
-    line-height: 20px;
-    cursor: pointer;
     font-weight: bold;
+    cursor: pointer;
 }
-.thumb-item.active {
-    border-color: #ffaa00;
-    box-shadow: 0 0 10px #f5b400;
-}
-.batch-buttons {
-    display: flex;
-    gap: 12px;
-    margin-top: 12px;
-    justify-content: flex-end;
-}
-.batch-buttons button {
-    background: #2c3e66;
-    color: white;
-}
-.batch-buttons button.primary {
-    background: #f5b400;
-    color: black;
-}
+.thumb-item.active { border-color: #ffaa00; box-shadow: 0 0 12px #f5b400; }
 .progress-bar {
-    margin-top: 10px;
+    margin-top: 12px;
     background: #444;
     border-radius: 20px;
     height: 20px;
     overflow: hidden;
     display: none;
 }
-.progress-fill {
-    width: 0%;
-    height: 100%;
-    background: #f5b400;
-    transition: width 0.2s;
+.progress-fill { width:0%; height:100%; background: #f5b400; transition: width 0.2s; }
+.footer-logo { text-align: center; margin: 20px auto; padding: 15px; background: rgba(0,0,0,0.6); border-radius: 40px; max-width: 1100px; }
+.footer-logo img { max-width: 100%; max-height: 100px; }
+.scroll-top-btn {
+    position: absolute; bottom: 20px; right: 20px;
+    background: #f5b400; border-radius: 50%; width: 48px; height: 48px;
+    font-size: 26px; font-weight: bold; cursor: pointer;
+    border: none;
 }
 </style>
 </head>
 <body>
 
 <div class="controls">
-<h3 style="margin:0 0 15px 0; color:#f5b400;">Đức Thuật Pro - Fake Timemark (Batch)</h3>
-
+<h3 style="margin:0 0 15px; color:#f5b400;">📸 Đức Thuật Pro - Xử lý nhiều ảnh + Vị trí thật tự động</h3>
 <div class="row">
-    <label>📷 Chọn ảnh (nhiều):</label>
-    <input type="file" id="uploadMultiple" accept="image/*" multiple style="flex:1">
+    <label>📂 Chọn ảnh (nhiều):</label>
+    <input type="file" id="uploadMultiple" accept="image/*" multiple>
+    <button id="clearAllBtn" style="background:#a94442;">🗑️ Xóa tất cả ảnh</button>
 </div>
-
 <div class="row">
-    <textarea id="address" placeholder="Địa chỉ chi tiết (có thể xuống dòng)">X Ea Pô, H. Cư Jút, T. Đắk Nông</textarea>
+    <label>📍 Tọa độ GPS (thủ công):</label>
+    <input type="text" id="manualCoord" style="flex:1" placeholder="12.1234, 108.5678">
+    <button id="applyManualBtn" style="background:#0288d1;">✅ Áp dụng tọa độ</button>
+    <button id="resetRealLocationBtn" style="background:#2c3e66;">🌍 Đặt lại vị trí thật</button>
 </div>
-
 <div class="row">
-    <label>🔍 Tìm địa điểm:</label>
-    <input type="text" id="mapSearch" style="flex:1" placeholder="Nhập địa chỉ...">
+    <textarea id="address" rows="2" placeholder="Địa chỉ chi tiết (tự động xuống dòng)">X Ea Pô, H. Cư Jút, T. Đắk Nông</textarea>
+</div>
+<div class="row">
+    <input type="text" id="mapSearch" placeholder="🔍 Tìm địa điểm...">
     <button onclick="searchMap()">Tìm</button>
+    <button onclick="getCurrentPosition()" style="background:#4caf50;">📍 Lấy GPS trình duyệt</button>
 </div>
-
-<div class="row">
-    <label>📍 Tọa độ GPS:</label>
-    <input type="text" id="manualCoord" value="" style="flex:1" placeholder="VD: 12.4519176, 107.6249466">
-    <button onclick="applyManualCoord()" style="background:#0288d1;">Áp dụng (thủ công)</button>
-</div>
-
 <div class="checkbox-row">
-    <label>👁️ Hiển thị tọa độ GPS:</label>
+    <label>👁️ Hiển thị tọa độ trên ảnh:</label>
     <input type="checkbox" id="showGpsCheckbox" checked>
-</div>
-
-<div class="checkbox-row">
-    <label>⏰ Dùng thời gian tĩnh:</label>
+    <label style="margin-left:20px;">⏰ Thời gian tĩnh:</label>
     <input type="checkbox" id="useStaticTime">
-    <span id="timeStatusBadge" style="background:#f5b400; color:#000; padding:2px 8px; border-radius:20px;">🕒 THỜI GIAN THỰC</span>
+    <span id="timeBadge" style="background:#f5b400;color:#000;padding:2px 12px;border-radius:40px;">🕒 THỰC</span>
 </div>
-<div class="row" id="staticTimeRow" style="display: none;">
-    <label>Ngày (DD/MM/YYYY):</label>
-    <input type="text" id="staticDate" value="18/03/2026" style="width:120px">
-    <label>Giờ:</label>
-    <input type="number" id="staticHour" min="0" max="23" value="12" style="width:70px">
-    <label>Phút:</label>
-    <input type="number" id="staticMinute" min="0" max="59" value="0" style="width:70px">
-    <label>Giây:</label>
-    <input type="number" id="staticSecond" min="0" max="59" value="0" style="width:70px">
-    <button onclick="setStaticToCurrentTime()">📅 Lấy giờ hiện tại</button>
+<div id="staticTimeRow" style="display:none; gap:8px; flex-wrap:wrap; margin:8px 0;">
+    <input type="text" id="staticDate" value="18/03/2026" style="width:110px" placeholder="DD/MM/YYYY">
+    <input type="number" id="staticHour" value="12" min="0" max="23" style="width:70px">
+    <input type="number" id="staticMinute" value="0" min="0" max="59" style="width:70px">
+    <input type="number" id="staticSecond" value="0" min="0" max="59" style="width:70px">
+    <button onclick="setStaticToNow()">📅 Lấy giờ hiện tại</button>
 </div>
-
 <div class="row">
     <label>✏️ Logo text:</label>
     <input type="text" id="logoText" value="Timemark" style="flex:1">
-</div>
-<div class="color-row">
-    <label>🎨 Màu text phần 1:</label>
-    <input type="color" id="logoColor1" value="#FFC107">
-    <label>Màu text phần 2:</label>
-    <input type="color" id="logoColor2" value="#FFFFFF">
-    <label>Đảo màu:</label>
-    <input type="checkbox" id="swapLogoColor">
-</div>
-<div class="color-row">
-    <label>🎨 Màu địa chỉ:</label>
-    <input type="color" id="addrColor" value="#FFFFFF">
+    <label>🎨 Màu 1:</label><input type="color" id="logoColor1" value="#FFC107">
+    <label>Màu 2:</label><input type="color" id="logoColor2" value="#FFFFFF">
+    <label>Đảo màu:</label><input type="checkbox" id="swapLogoColor">
 </div>
 <div class="row">
-    <label>📝 Ghi chú dọc (phải):</label>
-    <input type="text" id="verticalNote" value="NPRGME2RRP3NWK Timemark Verified" style="flex:1">
-</div>
-<div class="row">
-    <label>🔤 Font địa chỉ/ngày:</label>
-    <select id="fontSelect" style="flex:1"><option value="Inter">Inter</option><option value="Roboto">Roboto</option><option value="Montserrat">Montserrat</option><option value="Lato">Lato</option></select>
-</div>
-<div class="row">
-    <label>⚙️ Weight / Italic:</label>
-    <select id="fontWeight"><option value="400">400</option><option value="700" selected>700</option><option value="900">900</option></select>
-    <label>Nghiêng:</label><input type="checkbox" id="fontItalic">
-    <label style="margin-left:20px;">Font giờ:</label>
+    <label>🎨 Màu địa chỉ:</label><input type="color" id="addrColor" value="#FFFFFF">
+    <label>🔤 Font chữ:</label>
+    <select id="fontSelect"><option value="Inter">Inter</option><option value="Roboto">Roboto</option><option value="Montserrat">Montserrat</option></select>
+    <label>Font giờ:</label>
     <select id="timeFontSelect"><option value="Inter">Inter</option><option value="Bebas Neue">Bebas Neue</option></select>
-    <label>Weight:</label><select id="timeFontWeight"><option value="700">700</option><option value="900">900</option></select>
-    <label>Nghiêng:</label><input type="checkbox" id="timeFontItalic">
 </div>
-<div class="row">
-    <label>📏 Cỡ chữ dòng trên:</label><input type="range" id="leftScale" min="0.7" max="1.5" value="1.0" step="0.01">
-    <label>Dòng dưới:</label><input type="range" id="bottomScale" min="0.7" max="1.5" value="1.0" step="0.01">
-    <label>Cỡ giờ:</label><input type="range" id="timeScale" min="0.5" max="2.0" value="1.0" step="0.01">
-    <label>Cỡ ngày:</label><input type="range" id="dateScale" min="0.5" max="2.0" value="1.0" step="0.01">
-</div>
-<div class="slider-row"><label>📆 Cỡ thứ:</label><input type="range" id="dayScale" min="0.5" max="2.0" value="1.0" step="0.01"></div>
+<div class="slider-row"><label>📏 Cỡ chữ địa chỉ (dòng trên):</label><input type="range" id="leftScale" min="0.6" max="1.5" value="1.0" step="0.01"></div>
+<div class="slider-row"><label>📏 Cỡ chữ địa chỉ (dòng dưới):</label><input type="range" id="bottomScale" min="0.6" max="1.5" value="1.0" step="0.01"></div>
+<div class="slider-row"><label>🕒 Cỡ giờ:</label><input type="range" id="timeScale" min="0.5" max="2.0" value="1.0" step="0.01"></div>
+<div class="slider-row"><label>📅 Cỡ ngày/thứ:</label><input type="range" id="dateScale" min="0.5" max="1.8" value="1.0" step="0.01"></div>
 <div class="slider-row"><label>📏 Cỡ logo:</label><input type="range" id="rightScale" min="0.5" max="2.0" value="1.0" step="0.01"></div>
-<div class="slider-row"><label>🟨 Độ dày thanh vàng:</label><input type="range" id="barWidth" min="1" max="10" value="4" step="0.5"></div>
+<div class="slider-row"><label>🟨 Độ dày thanh vàng:</label><input type="range" id="barWidth" min="2" max="12" value="4" step="0.5"></div>
 <div class="slider-row"><label>📐 Chiều cao thanh vàng:</label><input type="range" id="barHeight" min="0.5" max="1.5" value="1.0" step="0.01"></div>
-<div class="slider-row"><label>⬆️ Khoảng cách thứ→địa chỉ:</label><input type="range" id="addrMargin" min="5" max="40" value="20" step="1"></div>
+<div class="slider-row"><label>⬆️ Khoảng cách thứ→địa chỉ:</label><input type="range" id="addrMargin" min="5" max="50" value="20" step="1"></div>
 <div class="slider-row"><label>🔆 Độ mờ text:</label><input type="range" id="textOpacity" min="0" max="1" value="1" step="0.01"></div>
 <div class="slider-row"><label>💡 Bóng (alpha):</label><input type="range" id="shadowOpacity" min="0" max="1" value="0.8" step="0.01"></div>
 <div class="slider-row"><label>💡 Bóng (blur):</label><input type="range" id="shadowBlur" min="0" max="20" value="8" step="0.5"></div>
-<div class="slider-row"><label>📏 Cỡ chữ ghi chú dọc:</label><input type="range" id="noteFontSize" min="10" max="30" value="18" step="0.5"></div>
-<div class="slider-row"><label>🖼️ Chất lượng JPEG:</label><input type="range" id="jpegQuality" min="1" max="100" value="95" step="1"></div>
-
+<div class="slider-row"><label>📝 Cỡ chữ ghi chú dọc:</label><input type="range" id="noteFontSize" min="12" max="32" value="18" step="0.5"></div>
+<div class="slider-row"><label>🔤 Max ký tự mỗi dòng địa chỉ:</label><input type="range" id="maxLineLength" min="30" max="80" value="50" step="1"></div>
 <div class="row">
-    <button onclick="getCurrentPosition()">📍 LẤY GPS TRÌNH DUYỆT</button>
-    <button onclick="downloadCurrentImage('png')" style="background:#2e7d32;">📥 TẢI ẢNH HIỆN TẠI (PNG)</button>
-    <button onclick="downloadCurrentImage('jpeg')" style="background:#f57c00;">🖼️ TẢI JPEG</button>
-    <button onclick="saveSettings()">💾 LƯU CÀI ĐẶT</button>
+    <textarea id="verticalNote" placeholder="Ghi chú dọc bên phải">NPRGME2RRP3NWK Timemark Verified</textarea>
 </div>
-<div id="status">Sẵn sàng! Chọn nhiều ảnh, kéo thả khung chữ để điều chỉnh vị trí (tự động lưu tỷ lệ).</div>
+<div class="row">
+    <button id="saveSettingsBtn">💾 Lưu cài đặt</button>
+    <button id="downloadCurrentBtn" style="background:#2e7d32;">📥 Tải ảnh đang xem (PNG)</button>
+    <button id="processAllZipBtn" style="background:#f57c00;">📦 XỬ LÝ TẤT CẢ & TẢI ZIP</button>
+</div>
+<div id="status" style="background:#000000aa; padding:8px; border-radius:30px; text-align:center; margin-top:10px;">✅ Sẵn sàng. Nếu chưa chỉnh sửa tọa độ, hệ thống tự lấy vị trí thật.</div>
 </div>
 
-<!-- Panel danh sách ảnh -->
 <div class="image-list-panel">
-    <h4>📸 Danh sách ảnh đã chọn <span id="imageCount">0</span> ảnh
-        <button id="clearAllImages" style="background:#a94442; padding:4px 12px;">Xóa tất cả</button>
-    </h4>
-    <div class="thumb-list" id="thumbList"></div>
-    <div class="batch-buttons">
-        <button id="processAllBtn" class="primary">⚡ XỬ LÝ TẤT CẢ (ZIP)</button>
-        <button id="processAllJpegBtn">📦 XỬ LÝ & TẢI JPEG (ZIP)</button>
-        <button id="downloadSelectedBtn">🔽 Tải ảnh đang xem</button>
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h4 style="color:#f5b400;">📸 Thư viện ảnh (<span id="imageCount">0</span>)</h4>
+        <div><button id="clearAllImages" style="background:#a94442;">Xóa tất cả</button></div>
     </div>
-    <div class="progress-bar" id="progressBar"><div class="progress-fill"></div></div>
+    <div class="thumb-list" id="thumbList"></div>
 </div>
 
-<div class="canvas-container">
-    <canvas id="canvas"></canvas>
+<div class="canvas-container" style="position:relative;">
+    <canvas id="canvas" width="800" height="600"></canvas>
     <button class="scroll-top-btn" onclick="window.scrollTo({top:0,behavior:'smooth'})">⬆️</button>
 </div>
-
 <div id="map"></div>
-<div class="map-controls"><button id="currentLocationBtn" onclick="getCurrentLocationOnMap()">📍 Vị trí hiện tại</button></div>
-
-<div class="footer-logo">
-    <div class="footer-logo-display">
-        <a href="https://zalo.me/0866639024" target="_blank">
-            <img src="https://i.postimg.cc/D08K8qBh/IMG-2826.jpg" alt="Logo" style="max-width:100%; max-height:120px;">
-        </a>
-    </div>
-</div>
+<div class="footer-logo"><a href="https://zalo.me/0866639024" target="_blank"><img src="https://i.postimg.cc/D08K8qBh/IMG-2826.jpg" alt="Logo"></a></div>
 
 <script>
-// ------------------- CẤU TRÚC DỮ LIỆU NHIỀU ẢNH -------------------
-let imagesList = [];      // mỗi phần tử { id, file, imgElement, name, width, height }
-let currentImageId = null;
+// ---------- BIẾN TOÀN CỤC ----------
+let images = [];          // { id, file, imgElement, name, width, height }
+let currentImgId = null;
 let canvas = document.getElementById('canvas');
 let ctx = canvas.getContext('2d');
-let defaultImgLoaded = false;
-
-// Tọa độ khối chữ dạng tỷ lệ (0..1)
-let relX = 0.05;    // tỷ lệ theo chiều rộng
-let relY = 0.75;    // tỷ lệ theo chiều cao (gần cuối)
-let dragging = false, dragOffsetRelX = 0, dragOffsetRelY = 0;
-
 let gpsText = "";
+let isCoordManuallyEdited = false;
 let currentTime = new Date();
 let staticTimeEnabled = false;
-let staticDateStr = "18/03/2026", staticHour=12, staticMinute=0, staticSecond=0;
+
+// Vị trí khung chữ (tỷ lệ %)
+let relX = 0.05;
+let relY = 0.78;
+let dragging = false, dragStartRelX = 0, dragStartRelY = 0;
+let leftBlockX = 0, leftBlockY = 0;
 
 // Bản đồ
 let map, currentMarker;
 
-// Helper functions
-function getMaxLineLength() { return parseInt(document.getElementById('maxLineLength').value) || 50; }
+// Ảnh mặc định (dùng để hiển thị khi chưa upload)
+let defaultImg = new Image();
+defaultImg.crossOrigin = "Anonymous";
+defaultImg.src = "https://i.postimg.cc/Bt1xMVQ8/IMG-2821.jpg";
+defaultImg.onload = () => {
+    // Nếu chưa có ảnh nào, tạo một ảnh ảo để hiển thị
+    if(images.length === 0) {
+        let dummyId = -1;
+        images.push({
+            id: dummyId,
+            imgElement: defaultImg,
+            name: "default_background",
+            width: defaultImg.width,
+            height: defaultImg.height,
+            isDefault: true
+        });
+        setCurrentImage(dummyId);
+        document.getElementById('status').innerHTML = "✅ Ảnh nền mặc định đã tải. Bạn có thể upload ảnh của mình.";
+    }
+};
+defaultImg.onerror = () => console.warn("Không tải được ảnh mặc định, vui lòng upload ảnh thủ công.");
+
+// Helper: wrap address
 function wrapAddress(text, maxLen) {
+    if (!text) return "";
+    text = text.replace(/\n/g, ', ');
     if (text.length <= maxLen) return text;
-    let lines = [];
-    let segments = text.split(/,\s*/);
-    let currentLine = '';
-    for (let seg of segments) {
-        if (currentLine.length + seg.length + 2 <= maxLen) {
-            if (currentLine) currentLine += ', ' + seg;
-            else currentLine = seg;
+    let lines = [], segments = text.split(/,\s*/);
+    let cur = '';
+    for (let s of segments) {
+        if (cur.length + s.length + 2 <= maxLen) {
+            cur += (cur ? ', ' + s : s);
         } else {
-            if (currentLine) lines.push(currentLine);
-            if (seg.length > maxLen) {
-                for (let i=0;i<seg.length;i+=maxLen) lines.push(seg.substr(i,maxLen));
-                currentLine = '';
-            } else currentLine = seg;
+            if (cur) lines.push(cur);
+            cur = s;
+            if (s.length > maxLen) {
+                for (let i=0;i<s.length;i+=maxLen) lines.push(s.substr(i,maxLen));
+                cur = '';
+            }
         }
     }
-    if (currentLine) lines.push(currentLine);
-    if (lines.length===0) for(let i=0;i<text.length;i+=maxLen) lines.push(text.substr(i,maxLen));
+    if (cur) lines.push(cur);
     return lines.join(',\n');
 }
-
 function autoWrapAddress() {
     let addr = document.getElementById('address');
-    let raw = addr.value;
-    let wrapped = wrapAddress(raw.replace(/\n/g, ', '), getMaxLineLength());
-    if (wrapped !== raw) addr.value = wrapped;
+    let maxLen = parseInt(document.getElementById('maxLineLength').value) || 50;
+    let wrapped = wrapAddress(addr.value, maxLen);
+    if (wrapped !== addr.value) addr.value = wrapped;
 }
 document.getElementById('address').addEventListener('blur', autoWrapAddress);
-document.getElementById('maxLineLength')?.addEventListener('input', autoWrapAddress);
-// Thêm thanh trượt maxLineLength vào (chưa có trong HTML cũ, thêm nhanh)
-if(!document.getElementById('maxLineLength')) {
-    let sliderRow = document.createElement('div'); sliderRow.className='slider-row';
-    sliderRow.innerHTML='<label>🔤 Max ký tự mỗi dòng:</label><input type="range" id="maxLineLength" min="30" max="80" value="50" step="1">';
-    document.querySelector('.controls .slider-row:last-child')?.after(sliderRow);
+document.getElementById('maxLineLength').addEventListener('input', autoWrapAddress);
+
+// ---------- GPS TỰ ĐỘNG (vị trí thật nếu chưa chỉnh sửa) ----------
+async function fetchRealLocationAndUpdate() {
+    if (!navigator.geolocation) {
+        document.getElementById('status').innerHTML = "⚠️ Trình duyệt không hỗ trợ GPS tự động.";
+        return false;
+    }
+    return new Promise((resolve) => {
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+            let lat = pos.coords.latitude.toFixed(6);
+            let lng = pos.coords.longitude.toFixed(6);
+            gpsText = `${lat}, ${lng}`;
+            document.getElementById('manualCoord').value = gpsText;
+            document.getElementById('status').innerHTML = `📍 Đã tự động cập nhật vị trí thật: ${gpsText}`;
+            if (map) updateMapLocation(parseFloat(lat), parseFloat(lng));
+            if (currentImgId !== null) drawCurrentImage();
+            resolve(true);
+        }, (err) => {
+            console.warn(err);
+            document.getElementById('status').innerHTML = "⚠️ Không lấy được GPS tự động, vui lòng nhập tay hoặc bấm nút lấy GPS.";
+            resolve(false);
+        }, { timeout: 8000 });
+    });
 }
 
-// Cập nhật thời gian
+function tryAutoSetRealLocation() {
+    if (!isCoordManuallyEdited && navigator.geolocation) {
+        fetchRealLocationAndUpdate();
+    } else if (isCoordManuallyEdited) {
+        document.getElementById('status').innerHTML = "ℹ️ Đã bỏ qua tự động GPS vì bạn đã chỉnh sửa tọa độ thủ công.";
+    }
+}
+
+function resetToRealLocation() {
+    isCoordManuallyEdited = false;
+    fetchRealLocationAndUpdate().then(() => {
+        if (currentImgId !== null) drawCurrentImage();
+    });
+}
+
+function markManualCoordChange() {
+    isCoordManuallyEdited = true;
+    gpsText = document.getElementById('manualCoord').value.trim();
+    if (currentImgId !== null) drawCurrentImage();
+    document.getElementById('status').innerHTML = "✏️ Đã chỉnh sửa tọa độ thủ công, tự động GPS sẽ tạm ngưng.";
+}
+
+document.getElementById('applyManualBtn').onclick = () => {
+    markManualCoordChange();
+    let val = document.getElementById('manualCoord').value.trim();
+    if (val) gpsText = val;
+    if (currentImgId !== null) drawCurrentImage();
+};
+document.getElementById('resetRealLocationBtn').onclick = () => resetToRealLocation();
+document.getElementById('manualCoord').addEventListener('change', markManualCoordChange);
+
+window.getCurrentPosition = function() {
+    isCoordManuallyEdited = false;
+    fetchRealLocationAndUpdate();
+};
+
+async function updateMapLocation(lat, lng) {
+    if (!map) return;
+    map.setView([lat, lng], 14);
+    if (currentMarker) map.removeLayer(currentMarker);
+    currentMarker = L.marker([lat, lng]).addTo(map).bindPopup(`📌 ${lat}, ${lng}`).openPopup();
+    try {
+        let res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18`);
+        let data = await res.json();
+        if (data.display_name) {
+            let addr = wrapAddress(data.display_name, parseInt(document.getElementById('maxLineLength').value)||50);
+            document.getElementById('address').value = addr;
+            if (currentImgId !== null) drawCurrentImage();
+        }
+    } catch(e) { console.warn(e); }
+}
+
+window.searchMap = async function() {
+    let query = document.getElementById('mapSearch').value;
+    if (!query) return;
+    let url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`;
+    try {
+        let res = await fetch(url, { headers: { 'User-Agent': navigator.userAgent } });
+        let data = await res.json();
+        if (data.length) {
+            let lat = parseFloat(data[0].lat), lon = parseFloat(data[0].lon);
+            gpsText = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+            document.getElementById('manualCoord').value = gpsText;
+            isCoordManuallyEdited = true;
+            if (map) updateMapLocation(lat, lon);
+            if (currentImgId !== null) drawCurrentImage();
+            document.getElementById('status').innerHTML = `🔍 Đã tìm thấy: ${data[0].display_name.split(',')[0]}`;
+        } else alert("Không tìm thấy");
+    } catch(e) { alert("Lỗi tìm kiếm"); }
+};
+
+function initMap() {
+    map = L.map('map').setView([12.238791, 109.196749], 6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    setTimeout(() => map.invalidateSize(), 200);
+    map.on('click', async (e) => {
+        let lat = e.latlng.lat.toFixed(6), lng = e.latlng.lng.toFixed(6);
+        gpsText = `${lat}, ${lng}`;
+        document.getElementById('manualCoord').value = gpsText;
+        isCoordManuallyEdited = true;
+        if (currentMarker) map.removeLayer(currentMarker);
+        currentMarker = L.marker([lat, lng]).addTo(map).bindPopup(`📍 ${gpsText}`).openPopup();
+        try {
+            let res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+            let data = await res.json();
+            if (data.display_name) {
+                let addr = wrapAddress(data.display_name, parseInt(document.getElementById('maxLineLength').value)||50);
+                document.getElementById('address').value = addr;
+            }
+        } catch(e) {}
+        if (currentImgId !== null) drawCurrentImage();
+    });
+}
+window.getCurrentLocationOnMap = function() { if(navigator.geolocation) navigator.geolocation.getCurrentPosition(p=>updateMapLocation(p.coords.latitude, p.coords.longitude)); };
+
+// ---------- THỜI GIAN ----------
+function syncStaticTime() {
+    staticDateStr = document.getElementById('staticDate').value;
+    staticHour = parseInt(document.getElementById('staticHour').value)||0;
+    staticMinute = parseInt(document.getElementById('staticMinute').value)||0;
+    staticSecond = parseInt(document.getElementById('staticSecond').value)||0;
+}
 function updateCurrentTime() {
     if (staticTimeEnabled) {
-        let parts = document.getElementById('staticDate').value.split('/');
+        syncStaticTime();
+        let parts = staticDateStr.split('/');
         if(parts.length===3){
-            let d = parseInt(parts[0]), m=parseInt(parts[1])-1, y=parseInt(parts[2]);
-            let h=parseInt(document.getElementById('staticHour').value)||0;
-            let min=parseInt(document.getElementById('staticMinute').value)||0;
-            let s=parseInt(document.getElementById('staticSecond').value)||0;
-            currentTime = new Date(y,m,d,h,min,s);
+            let d=parseInt(parts[0]), m=parseInt(parts[1])-1, y=parseInt(parts[2]);
+            currentTime = new Date(y,m,d,staticHour,staticMinute,staticSecond);
         } else currentTime = new Date();
     } else currentTime = new Date();
-    if (currentImageId !== null) drawCurrentImage();
+    if(currentImgId!==null) drawCurrentImage();
 }
-setInterval(() => { if(!staticTimeEnabled && currentImageId!==null) updateCurrentTime(); }, 1000);
+setInterval(() => { if(!staticTimeEnabled && currentImgId!==null) updateCurrentTime(); }, 1000);
 document.getElementById('useStaticTime').addEventListener('change', (e)=>{
     staticTimeEnabled=e.target.checked;
     document.getElementById('staticTimeRow').style.display=staticTimeEnabled?'flex':'none';
+    document.getElementById('timeBadge').innerHTML = staticTimeEnabled ? '⏸️ TĨNH' : '🕒 THỰC';
     updateCurrentTime();
 });
-['staticDate','staticHour','staticMinute','staticSecond'].forEach
+document.getElementById('staticDate').addEventListener('input', updateCurrentTime);
+document.getElementById('staticHour').addEventListener('input', updateCurrentTime);
+document.getElementById('staticMinute').addEventListener('input', updateCurrentTime);
+document.getElementById('staticSecond').addEventListener('input', updateCurrentTime);
+window.setStaticToNow = function(){
+    let n=new Date();
+    let d=String(n.getDate()).padStart(2,'0'), m=String(n.getMonth()+1).padStart(2,'0'), y=n.getFullYear();
+    document.getElementById('staticDate').value=`${d}/${m}/${y}`;
+    document.getElementById('staticHour').value=n.getHours();
+    document.getElementById('staticMinute').value=n.getMinutes();
+    document.getElementById('staticSecond').value=n.getSeconds();
+    if(!document.getElementById('useStaticTime').checked) document.getElementById('useStaticTime').click();
+    updateCurrentTime();
+};
+
+// ---------- QUẢN LÝ NHIỀU ẢNH ----------
+let nextId = 1;
+function addImage(file) {
+    let reader = new FileReader();
+    reader.onload = (e) => {
+        let img = new Image();
+        img.onload = () => {
+            let id = nextId++;
+            images.push({
+                id: id,
+                file: file,
+                imgElement: img,
+                name: file.name,
+                width: img.width,
+                height: img.height
+            });
+            renderThumbnails();
+            if (currentImgId === null || currentImgId === -1) setCurrentImage(id);
+            document.getElementById('imageCount').innerText = images.filter(i=>!i.isDefault).length;
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+document.getElementById('uploadMultiple').addEventListener('change', (e) => {
+    for (let file of e.target.files) addImage(file);
+    e.target.value = '';
+});
+function renderThumbnails() {
+    let container = document.getElementById('thumbList');
+    container.innerHTML = '';
+    for (let img of images) {
+        if(img.isDefault) continue;
+        let div = document.createElement('div');
+        div.className = 'thumb-item' + (currentImgId === img.id ? ' active' : '');
+        let thumbImg = document.createElement('img');
+        thumbImg.src = img.imgElement.src;
+        let delBtn = document.createElement('div');
+        delBtn.className = 'delete-btn';
+        delBtn.innerHTML = '✕';
+        delBtn.onclick = (e) => { e.stopPropagation(); removeImage(img.id); };
+        div.appendChild(thumbImg);
+        div.appendChild(delBtn);
+        div.onclick = () => setCurrentImage(img.id);
+        container.appendChild(div);
+    }
+}
+function removeImage(id) {
+    let idx = images.findIndex(i => i.id === id);
+    if (idx !== -1) images.splice(idx, 1);
+    if (currentImgId === id) {
+        if (images.length) {
+            let firstReal = images.find(i=>!i.isDefault);
+            if(firstReal) setCurrentImage(firstReal.id);
+            else if(images.find(i=>i.isDefault)) setCurrentImage(-1);
+            else currentImgId = null;
+        } else { currentImgId = null; ctx.clearRect(0,0,canvas.width,canvas.height); }
+    }
+    renderThumbnails();
+    let realCount = images.filter(i=>!i.isDefault).length;
+    document.getElementById('imageCount').innerText = realCount;
+}
+document.getElementById('clearAllImages').onclick = () => {
+    images = images.filter(i=>i.isDefault);
+    if(images.length===1 && images[0].isDefault) setCurrentImage(-1);
+    else currentImgId = null;
+    renderThumbnails();
+    let realCount = images.filter(i=>!i.isDefault).length;
+    document.getElementById('imageCount').innerText = realCount;
+    if(currentImgId===null && images.length) setCurrentImage(images[0].id);
+    else drawCurrentImage();
+};
+function setCurrentImage(id) {
+    currentImgId = id;
+    let imgObj = images.find(i => i.id === id);
+    if (!imgObj) return;
+    canvas.width = imgObj.width;
+    canvas.height = imgObj.height;
+    leftBlockX = relX * canvas.width;
+    leftBlockY = relY * canvas.height;
+    renderThumbnails();
+    drawCurrentImage();
+}
+
+// HÀM VẼ ẢNH HIỆN TẠI (sửa lỗi thiếu control)
+function drawCurrentImage() {
+    let imgObj = images.find(i => i.id === currentImgId);
+    if (!imgObj) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(imgObj.imgElement, 0, 0, canvas.width, canvas.height);
+    
+    // Lấy giá trị an toàn, nếu thiếu thì dùng mặc định
+    const getVal = (id, def) => {
+        let el = document.getElementById(id);
+        return el ? parseFloat(el.value) : def;
+    };
+    const getChecked = (id, def) => {
+        let el = document.getElementById(id);
+        return el ? el.checked : def;
+    };
+    const getColor = (id, def) => {
+        let el = document.getElementById(id);
+        return el ? el.value : def;
+    };
+    const getSelect = (id, def) => {
+        let el = document.getElementById(id);
+        return el ? el.value : def;
+    };
+    
+    let leftScale = getVal('leftScale', 1.0);
+    let bottomScale = getVal('bottomScale', 1.0);
+    let timeScale = getVal('timeScale', 1.0);
+    let dateScale = getVal('dateScale', 1.0);
+    let rightScale = getVal('rightScale', 1.0);
+    let barWidthVal = getVal('barWidth', 4);
+    let barHeightFactor = getVal('barHeight', 1.0);
+    let addrMarginTop = getVal('addrMargin', 20) * (canvas.height/1080);
+    let textOpacity = getVal('textOpacity', 1);
+    let shadowOpacity = getVal('shadowOpacity', 0.8);
+    let shadowBlur = getVal('shadowBlur', 8);
+    let noteFontSize = getVal('noteFontSize', 18) * (canvas.height/1080);
+    let notePadding = 15 * (canvas.width/1080);
+    let timeFontSize = 100 * (canvas.height/1080) * timeScale;
+    let dateFontSize = 30 * (canvas.height/1080) * dateScale;
+    let dayFontSize = 26 * (canvas.height/1080) * dateScale;
+    let addrFontSizeTop = 24 * (canvas.height/1080) * leftScale;
+    let addrFontSizeBottom = 24 * (canvas.height/1080) * bottomScale;
+    let logoFontSize = 28 * (canvas.width/1080) * rightScale;
+    let subFontSize = 20 * (canvas.width/1080);
+    let fontFamily = getSelect('fontSelect', 'Inter');
+    let timeFontFamily = getSelect('timeFontSelect', 'Bebas Neue');
+    let fontWeight = getSelect('fontWeight', '700');
+    let timeFontWeight = getSelect('timeFontWeight', '700');
+    let fontItalic = getChecked('fontItalic', false);
+    let timeItalic = getChecked('timeFontItalic', false);
+    let showGps = getChecked('showGpsCheckbox', true);
+    let verticalNote = document.getElementById('verticalNote')?.value.trim() || "";
+    let logoText = document.getElementById('logoText')?.value.trim() || "";
+    let logoColor1 = getColor('logoColor1', '#FFC107');
+    let logoColor2 = getColor('logoColor2', '#FFFFFF');
+    let swapLogo = getChecked('swapLogoColor', false);
+    let addrColor = getColor('addrColor', '#FFFFFF');
+    
+    let timeStr = `${currentTime.getHours().toString().padStart(2,'0')}:${currentTime.getMinutes().toString().padStart(2,'0')}`;
+    let dateStr = `${currentTime.getDate().toString().padStart(2,'0')}/${(currentTime.getMonth()+1).toString().padStart(2,'0')}/${currentTime.getFullYear()}`;
+    let dayStr = currentTime.toLocaleDateString('vi-VN', { weekday: 'long' });
+    let addrRaw = document.getElementById('address').value.trim() || "Không có địa chỉ";
+    let addrLines = addrRaw.split('\n').slice(0,2);
+    if (addrLines.length===1) addrLines.push("");
+    
+    let timeY = leftBlockY + timeFontSize*0.8;
+    let dateY = leftBlockY + timeFontSize*0.6;
+    let dayY = leftBlockY + timeFontSize*0.4;
+    
+    ctx.shadowColor = `rgba(0,0,0,${shadowOpacity})`;
+    ctx.shadowBlur = shadowBlur;
+    ctx.font = `${timeItalic?'italic':''} ${timeFontWeight} ${timeFontSize}px ${timeFontFamily}`;
+    ctx.fillStyle = `rgba(255,255,255,${textOpacity})`;
+    ctx.fillText(timeStr, leftBlockX, timeY);
+    let timeWidth = ctx.measureText(timeStr).width;
+    let barX = leftBlockX + timeWidth + 12;
+    let barWidthPx = barWidthVal * (canvas.width/1080);
+    ctx.fillStyle = '#FFC107';
+    ctx.fillRect(barX, leftBlockY, barWidthPx, timeFontSize*barHeightFactor);
+    let rightColX = barX + barWidthPx + 12;
+    ctx.font = `${fontItalic?'italic':''} ${fontWeight} ${dateFontSize}px ${fontFamily}`;
+    ctx.fillStyle = `rgba(255,255,255,${textOpacity*0.95})`;
+    ctx.fillText(dateStr, rightColX, dateY);
+    ctx.font = `${fontItalic?'italic':''} ${fontWeight} ${dayFontSize}px ${fontFamily}`;
+    ctx.fillStyle = `rgba(255,255,220,${textOpacity*0.85})`;
+    ctx.fillText(dayStr, rightColX, dayY);
+    ctx.font = `${fontItalic?'italic':''} ${fontWeight} ${addrFontSizeTop}px ${fontFamily}`;
+    let rgbAddr = parseInt(addrColor.slice(1,3),16)+','+parseInt(addrColor.slice(3,5),16)+','+parseInt(addrColor.slice(5,7),16);
+    ctx.fillStyle = `rgba(${rgbAddr},${textOpacity*0.85})`;
+    ctx.fillText(addrLines[0], leftBlockX, dayY + dayFontSize*0.4 + addrMarginTop);
+    if(addrLines[1]){
+        ctx.font = `${fontItalic?'italic':''} ${fontWeight} ${addrFontSizeBottom}px ${fontFamily}`;
+        ctx.fillText(addrLines[1], leftBlockX, dayY + dayFontSize*0.4 + addrMarginTop + addrFontSizeTop + 5);
+    }
+    if(logoText){
+        let logoFontWeight = getSelect('logoFontWeight', '700');
+        let logoItalic = getChecked('logoFontItalic', false);
+        ctx.font = `${logoItalic?'italic':''} ${logoFontWeight} ${logoFontSize}px ${fontFamily}`;
+        ctx.textAlign = 'right';
+        let logoX = canvas.width - 20;
+        let logoYBase = canvas.height - 20;
+        let logoY = logoYBase - subFontSize - 8;
+        if(logoText.toLowerCase().startsWith('time')){
+            let t = logoText.substring(0,4), m = logoText.substring(4);
+            let w = ctx.measureText(m).width;
+            let col1=swapLogo?logoColor2:logoColor1, col2=swapLogo?logoColor1:logoColor2;
+            ctx.fillStyle = col2; ctx.fillText(m, logoX, logoY);
+            ctx.fillStyle = col1; ctx.fillText(t, logoX - w, logoY);
+        } else { ctx.fillStyle = logoColor1; ctx.fillText(logoText, logoX, logoY); }
+        ctx.font = `400 ${subFontSize}px ${fontFamily}`;
+        ctx.fillStyle = `rgba(255,255,255,${textOpacity*0.7})`;
+        ctx.fillText('100% Chân thực', logoX, logoYBase);
+        ctx.textAlign = 'left';
+    }
+    if(showGps && gpsText){
+        ctx.font = `400 ${20*(canvas.height/1080)}px ${fontFamily}`;
+        ctx.fillStyle = `rgba(160,220,255,${textOpacity})`;
+        ctx.fillText(gpsText, leftBlockX, canvas.height - 15);
+    }
+    if(verticalNote){
+        ctx.save();
+        ctx.font = `${fontItalic?'italic':''} ${fontWeight} ${noteFontSize}px ${fontFamily}`;
+        ctx.fillStyle = `rgba(255,255,255,${textOpacity*0.85})`;
+        ctx.translate(canvas.width - notePadding, canvas.height/2);
+        ctx.rotate(-Math.PI/2);
+        ctx.textAlign = 'center';
+        ctx.fillText('🛡️✓ '+verticalNote, 0, 0);
+        ctx.restore();
+    }
+    ctx.shadowColor = 'transparent';
+}
+
+// KÉO THẢ
+function handleDragStart(e) {
+    dragging = true;
+    let rect = canvas.getBoundingClientRect();
+    let clientX = e.clientX ?? (e.touches? e.touches[0].clientX:0);
+    let clientY = e.clientY ?? (e.touches? e.touches[0].clientY:0);
+    let mouseX = (clientX - rect.left) * (canvas.width / rect.width);
+    let mouseY = (clientY - rect.top) * (canvas.height / rect.height);
+    dragStartRelX = mouseX - leftBlockX;
+    dragStartRelY = mouseY - leftBlockY;
+}
+function handleDragMove(e) {
+    if(!dragging) return;
+    let rect = canvas.getBoundingClientRect();
+    let clientX = e.clientX ?? (e.touches? e.touches[0].clientX:0);
+    let clientY = e.clientY ?? (e.touches? e.touches[0].clientY:0);
+    let mouseX = (clientX - rect.left) * (canvas.width / rect.width);
+    let mouseY = (clientY - rect.top) * (canvas.height / rect.height);
+    let newX = mouseX - dragStartRelX;
+    let newY = mouseY - dragStartRelY;
+    newX = Math.min(Math.max(newX, 10), canvas.width - 200);
+    newY = Math.min(Math.max(newY, 20), canvas.height - 150);
+    leftBlockX = newX;
+    leftBlockY = newY;
+    relX = leftBlockX / canvas.width;
+    relY = leftBlockY / canvas.height;
+    drawCurrentImage();
+}
+function handleDragEnd() { dragging = false; }
+canvas.addEventListener('mousedown', handleDragStart);
+canvas.addEventListener('mousemove', handleDragMove);
+canvas.addEventListener('mouseup', handleDragEnd);
+canvas.addEventListener('touchstart', (e)=>{ e.preventDefault(); handleDragStart(e); }, {passive:false});
+canvas.addEventListener('touchmove', (e)=>{ e.preventDefault(); handleDragMove(e); }, {passive:false});
+canvas.addEventListener('touchend', handleDragEnd);
+
+// LƯU CÀI ĐẶT
+document.getElementById('saveSettingsBtn').onclick = () => {
+    let settings = {
+        address: document.getElementById('address').value,
+        manualCoord: document.getElementById('manualCoord').value,
+        useStaticTime: document.getElementById('useStaticTime').checked,
+        staticDate: document.getElementById('staticDate').value,
+        staticHour: document.getElementById('staticHour').value,
+        staticMinute: document.getElementById('staticMinute').value,
+        staticSecond: document.getElementById('staticSecond').value,
+        logoText: document.getElementById('logoText').value,
+        logoColor1: document.getElementById('logoColor1').value,
+        logoColor2: document.getElementById('logoColor2').value,
+        swapLogo: document.getElementById('swapLogoColor').checked,
+        addrColor: document.getElementById('addrColor').value,
+        verticalNote: document.getElementById('verticalNote').value,
+        leftScale: document.getElementById('leftScale').value,
+        bottomScale: document.getElementById('bottomScale').value,
+        timeScale: document.getElementById('timeScale').value,
+        dateScale: document.getElementById('dateScale').value,
+        rightScale: document.getElementById('rightScale').value,
+        barWidth: document.getElementById('barWidth').value,
+        barHeight: document.getElementById('barHeight').value,
+        addrMargin: document.getElementById('addrMargin').value,
+        textOpacity: document.getElementById('textOpacity').value,
+        shadowOpacity: document.getElementById('shadowOpacity').value,
+        shadowBlur: document.getElementById('shadowBlur').value,
+        noteFontSize: document.getElementById('noteFontSize').value,
+        maxLineLength: document.getElementById('maxLineLength').value,
+        fontSelect: document.getElementById('fontSelect').value,
+        timeFontSelect: document.getElementById('timeFontSelect').value,
+        showGps: document.getElementById('showGpsCheckbox').checked,
+        relX, relY, gpsText
+    };
+    localStorage.setItem('ducthuatSettings', JSON.stringify(settings));
+    alert('Đã lưu cài đặt');
+};
+function loadSettings() {
+    let saved = localStorage.getItem('ducthuatSettings');
+    if(saved){
+        let s = JSON.parse(saved);
+        if(s.address) document.getElementById('address').value = s.address;
+        if(s.manualCoord) { document.getElementById('manualCoord').value = s.manualCoord; gpsText = s.manualCoord; isCoordManuallyEdited = true; }
+        if(s.useStaticTime !== undefined) document.getElementById('useStaticTime').checked = s.useStaticTime;
+        if(s.staticDate) document.getElementById('staticDate').value = s.staticDate;
+        if(s.staticHour) document.getElementById('staticHour').value = s.staticHour;
+        if(s.staticMinute) document.getElementById('staticMinute').value = s.staticMinute;
+        if(s.staticSecond) document.getElementById('staticSecond').value = s.staticSecond;
+        if(s.logoText) document.getElementById('logoText').value = s.logoText;
+        if(s.logoColor1) document.getElementById('logoColor1').value = s.logoColor1;
+        if(s.logoColor2) document.getElementById('logoColor2').value = s.logoColor2;
+        if(s.swapLogo !== undefined) document.getElementById('swapLogoColor').checked = s.swapLogo;
+        if(s.addrColor) document.getElementById('addrColor').value = s.addrColor;
+        if(s.verticalNote) document.getElementById('verticalNote').value = s.verticalNote;
+        if(s.leftScale) document.getElementById('leftScale').value = s.leftScale;
+        if(s.bottomScale) document.getElementById('bottomScale').value = s.bottomScale;
+        if(s.timeScale) document.getElementById('timeScale').value = s.timeScale;
+        if(s.dateScale) document.getElementById('dateScale').value = s.dateScale;
+        if(s.rightScale) document.getElementById('rightScale').value = s.rightScale;
+        if(s.barWidth) document.getElementById('barWidth').value = s.barWidth;
+        if(s.barHeight) document.getElementById('barHeight').value = s.barHeight;
+        if(s.addrMargin) document.getElementById('addrMargin').value = s.addrMargin;
+        if(s.textOpacity) document.getElementById('textOpacity').value = s.textOpacity;
+        if(s.shadowOpacity) document.getElementById('shadowOpacity').value = s.shadowOpacity;
+        if(s.shadowBlur) document.getElementById('shadowBlur').value = s.shadowBlur;
+        if(s.noteFontSize) document.getElementById('noteFontSize').value = s.noteFontSize;
+        if(s.maxLineLength) document.getElementById('maxLineLength').value = s.maxLineLength;
+        if(s.fontSelect) document.getElementById('fontSelect').value = s.fontSelect;
+        if(s.timeFontSelect) document.getElementById('timeFontSelect').value = s.timeFontSelect;
+        if(s.showGps !== undefined) document.getElementById('showGpsCheckbox').checked = s.showGps;
+        if(s.relX) relX = s.relX;
+        if(s.relY) relY = s.relY;
+        updateCurrentTime();
+        if(currentImgId !== null) drawCurrentImage();
+    }
+}
+
+// XỬ LÝ BATCH ZIP
+document.getElementById('processAllZipBtn').onclick = async () => {
+    let realImages = images.filter(i=>!i.isDefault);
+    if(realImages.length===0){ alert("Chưa có ảnh nào để xử lý!"); return; }
+    let zip = new JSZip();
+    let total = realImages.length;
+    let processed = 0;
+    let progressDiv = document.getElementById('progressBar');
+    progressDiv.style.display = 'block';
+    let fillDiv = document.querySelector('.progress-fill');
+    for(let img of realImages){
+        currentImgId = img.id;
+        drawCurrentImage();
+        await new Promise(r => setTimeout(r, 50));
+        let dataURL = canvas.toDataURL('image/png');
+        let base64 = dataURL.split(',')[1];
+        zip.file(`${img.name.replace(/\.[^/.]+$/, '')}_timemark.png`, base64, {base64: true});
+        processed++;
+        fillDiv.style.width = (processed/total*100)+'%';
+    }
+    let content = await zip.generateAsync({type:'blob'});
+    let link = document.createElement('a');
+    link.href = URL.createObjectURL(content);
+    link.download = `ducthuat_batch_${Date.now()}.zip`;
+    link.click();
+    progressDiv.style.display = 'none';
+    alert("Đã xuất ZIP thành công!");
+};
+document.getElementById('downloadCurrentBtn').onclick = () => {
+    if(!currentImgId){ alert("Chưa chọn ảnh"); return; }
+    let link = document.createElement('a');
+    link.download = `timemark_${Date.now()}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+};
+
+// KHỞI TẠO
+window.addEventListener('load', () => {
+    initMap();
+    loadSettings();
+    setTimeout(() => {
+        if(!isCoordManuallyEdited) tryAutoSetRealLocation();
+    }, 1000);
+    // Đảm bảo các control bổ sung có mặt (nếu thiếu thì tạo)
+    let needed = ['fontWeight','timeFontWeight','fontItalic','timeFontItalic','logoFontWeight','logoFontItalic'];
+    needed.forEach(id => {
+        if(!document.getElementById(id)){
+            let input = document.createElement('input');
+            input.type = 'hidden';
+            input.id = id;
+            if(id.includes('Italic')) input.value = 'false';
+            else if(id.includes('Weight')) input.value = '700';
+            document.body.appendChild(input);
+        }
+    });
+    // Thêm progress bar nếu chưa có
+    if(!document.querySelector('.progress-bar')) {
+        let pb = document.createElement('div');
+        pb.className = 'progress-bar';
+        pb.innerHTML = '<div class="progress-fill"></div>';
+        document.querySelector('.batch-buttons')?.after(pb);
+    }
+});
+</script>
+</body>
+</html>
