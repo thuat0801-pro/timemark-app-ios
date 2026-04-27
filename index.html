@@ -1,387 +1,483 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Đức Thuật Pro - Batch Timemark</title>
-    
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Bebas+Neue&display=swap" rel="stylesheet">
-    
-    <style>
-        :root {
-            --primary: #f5b400;
-            --bg-dark: #121212;
-            --panel-bg: rgba(30, 30, 30, 0.95);
-        }
-
-        * { box-sizing: border-box; }
-        body {
-            font-family: 'Inter', sans-serif;
-            background: #1a1a1a;
-            color: white;
-            margin: 0;
-            padding: 10px;
-            background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('https://i.postimg.cc/Bt1xMVQ8/IMG-2821.jpg');
-            background-size: cover;
-            background-attachment: fixed;
-        }
-
-        .container { max-width: 1000px; margin: 0 auto; }
-
-        /* Controls Section */
-        .panel {
-            background: var(--panel-bg);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 20px;
-            margin-bottom: 15px;
-            border: 1px solid var(--primary);
-        }
-
-        h2 { color: var(--primary); margin-top: 0; font-size: 1.5rem; text-align: center; }
-
-        .form-group { margin-bottom: 15px; }
-        .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 10px; }
-        
-        input[type="text"], input[type="number"], textarea, select {
-            background: #252525;
-            border: 1px solid #444;
-            color: white;
-            padding: 10px 15px;
-            border-radius: 12px;
-            outline: none;
-        }
-        
-        input:focus { border-color: var(--primary); }
-
-        button {
-            background: var(--primary);
-            color: black;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 12px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-
-        button:active { transform: scale(0.95); }
-        .btn-blue { background: #0288d1; color: white; }
-        .btn-green { background: #4caf50; color: white; }
-        .btn-red { background: #d32f2f; color: white; }
-
-        /* Canvas & Preview */
-        #canvas {
-            width: 100%;
-            height: auto;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            display: block;
-            margin: 20px 0;
-            cursor: move;
-        }
-
-        /* Image List */
-        .thumb-list {
-            display: flex;
-            gap: 10px;
-            overflow-x: auto;
-            padding: 10px 0;
-        }
-        .thumb-item {
-            width: 80px; height: 80px;
-            border-radius: 8px;
-            overflow: hidden;
-            border: 2px solid transparent;
-            flex-shrink: 0;
-            cursor: pointer;
-            position: relative;
-        }
-        .thumb-item.active { border-color: var(--primary); }
-        .thumb-item img { width: 100%; height: 100%; object-fit: cover; }
-
-        #map { height: 250px; width: 100%; border-radius: 15px; margin: 15px 0; border: 1px solid var(--primary); }
-
-        .progress-container {
-            width: 100%;
-            background: #333;
-            height: 10px;
-            border-radius: 5px;
-            margin: 10px 0;
-            display: none;
-        }
-        .progress-bar { width: 0%; height: 100%; background: var(--primary); border-radius: 5px; transition: 0.3s; }
-        
-        .footer { text-align: center; margin-top: 30px; opacity: 0.8; }
-        .footer img { max-width: 150px; border-radius: 50%; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Đức Thuật Pro - Fake Timemark (Hỗ trợ xử lý nhiều ảnh)</title>
+<!-- Leaflet CSS + JS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- JSZip để nén nhiều ảnh -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&family=Montserrat:wght@400;500;700;800&family=Roboto:wght@400;500;700&family=Bebas+Neue&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* Giữ nguyên style cũ, thêm một số style mới cho danh sách ảnh */
+body {
+    font-family: 'Inter', sans-serif;
+    background: url('https://i.postimg.cc/Bt1xMVQ8/IMG-2821.jpg') no-repeat center center fixed;
+    background-size: cover;
+    margin: 0;
+    padding: 10px;
+    position: relative;
+}
+body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    pointer-events: none;
+    z-index: 0;
+}
+.controls, .canvas-container, #map, .footer-logo, .image-list-panel {
+    position: relative;
+    z-index: 2;
+}
+.controls {
+    background: rgba(30, 30, 30, 0.9);
+    backdrop-filter: blur(8px);
+    border-radius: 16px;
+    padding: 20px;
+    max-width: 1000px;
+    margin: 0 auto 15px;
+    border: 1px solid #f5b400;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+.row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 12px;
+    justify-content: center;
+    align-items: center;
+}
+label {
+    color: #f5b400;
+    font-weight: bold;
+    font-size: 14px;
+    min-width: 120px;
+    text-align: left;
+}
+input, textarea, select, button {
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px solid #444;
+    background: #2a2a2a;
+    color: white;
+    font-size: 14px;
+    outline: none;
+}
+textarea {
+    width: 100%;
+    border-color: #f5b400;
+    min-height: 60px;
+}
+button {
+    background: #f5b400;
+    color: #000;
+    font-weight: 900;
+    border: none;
+    cursor: pointer;
+    transition: 0.2s;
+}
+button:active { transform: scale(0.97); }
+.slider-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #252525cc;
+    padding: 10px 15px;
+    border-radius: 30px;
+    margin: 8px 0;
+}
+.slider-row input { flex: 1; accent-color: #f5b400; }
+.checkbox-row, .color-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #252525cc;
+    padding: 10px 15px;
+    border-radius: 30px;
+    margin: 8px 0;
+}
+.checkbox-row label { min-width: auto; }
+.canvas-container {
+    position: relative;
+    display: inline-block;
+    max-width: 100%;
+    margin-top: 10px;
+    background: rgba(0,0,0,0.5);
+    border-radius: 8px;
+    padding: 8px;
+}
+canvas {
+    max-width: 100%;
+    border-radius: 8px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.5);
+    touch-action: none;
+    cursor: grab;
+    display: block;
+    margin: 0 auto;
+}
+canvas:active { cursor: grabbing; }
+.scroll-top-btn {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: #f5b400;
+    border-radius: 50%;
+    width: 44px;
+    height: 44px;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+#map {
+    height: 300px;
+    width: 100%;
+    border-radius: 12px;
+    margin-top: 15px;
+    border: 1px solid #f5b400;
+}
+.map-controls {
+    display: flex;
+    gap: 10px;
+    margin-top: 8px;
+    justify-content: flex-end;
+}
+.map-controls button { background: #0288d1; color: white; padding: 8px 16px; }
+#status {
+    color: #f5b400;
+    font-size: 13px;
+    margin-top: 10px;
+    background: rgba(0,0,0,0.5);
+    padding: 6px;
+    border-radius: 12px;
+    text-align: center;
+}
+.footer-logo {
+    text-align: center;
+    margin: 30px auto 0;
+    padding: 20px;
+    background: rgba(0,0,0,0.6);
+    border-radius: 16px;
+    max-width: 1000px;
+    backdrop-filter: blur(4px);
+}
+/* Panel quản lý nhiều ảnh */
+.image-list-panel {
+    background: rgba(0,0,0,0.7);
+    border-radius: 16px;
+    padding: 15px;
+    margin: 15px auto;
+    max-width: 1000px;
+    backdrop-filter: blur(5px);
+    border: 1px solid #f5b400;
+}
+.image-list-panel h4 {
+    color: #f5b400;
+    margin: 0 0 10px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.thumb-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    max-height: 180px;
+    overflow-x: auto;
+    padding: 8px;
+    background: #1e1e1ecc;
+    border-radius: 12px;
+}
+.thumb-item {
+    position: relative;
+    width: 100px;
+    height: 100px;
+    border: 2px solid #f5b400;
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    background: #2a2a2a;
+    flex-shrink: 0;
+}
+.thumb-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.thumb-item .delete-btn {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    background: rgba(0,0,0,0.7);
+    color: #ff4444;
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    font-size: 16px;
+    text-align: center;
+    line-height: 20px;
+    cursor: pointer;
+    font-weight: bold;
+}
+.thumb-item.active {
+    border-color: #ffaa00;
+    box-shadow: 0 0 10px #f5b400;
+}
+.batch-buttons {
+    display: flex;
+    gap: 12px;
+    margin-top: 12px;
+    justify-content: flex-end;
+}
+.batch-buttons button {
+    background: #2c3e66;
+    color: white;
+}
+.batch-buttons button.primary {
+    background: #f5b400;
+    color: black;
+}
+.progress-bar {
+    margin-top: 10px;
+    background: #444;
+    border-radius: 20px;
+    height: 20px;
+    overflow: hidden;
+    display: none;
+}
+.progress-fill {
+    width: 0%;
+    height: 100%;
+    background: #f5b400;
+    transition: width 0.2s;
+}
+</style>
 </head>
 <body>
 
-<div class="container">
-    <div class="panel">
-        <h2>📸 ĐỨC THUẬT PRO - BATCH V3.0</h2>
-        
-        <div class="form-group">
-            <label>📂 Chọn ảnh xử lý hàng loạt:</label><br><br>
-            <input type="file" id="fileInput" multiple accept="image/*">
-            <button class="btn-red" id="clearBtn">Xóa danh sách</button>
-        </div>
+<div class="controls">
+<h3 style="margin:0 0 15px 0; color:#f5b400;">Đức Thuật Pro - Fake Timemark (Batch)</h3>
 
-        <div class="row">
-            <input type="text" id="address" style="flex: 1;" placeholder="Địa chỉ hiển thị trên ảnh...">
-            <button class="btn-green" onclick="getCurrentLocation()">📍 GPS</button>
-        </div>
+<div class="row">
+    <label>📷 Chọn ảnh (nhiều):</label>
+    <input type="file" id="uploadMultiple" accept="image/*" multiple style="flex:1">
+</div>
 
-        <div class="row">
-            <input type="text" id="manualCoord" style="flex: 1;" placeholder="Tọa độ (Lat, Lng)">
-            <input type="text" id="logoText" style="width: 120px;" value="Timemark">
-            <input type="color" id="primaryColor" value="#FFC107">
-        </div>
+<div class="row">
+    <textarea id="address" placeholder="Địa chỉ chi tiết (có thể xuống dòng)">X Ea Pô, H. Cư Jút, T. Đắk Nông</textarea>
+</div>
 
-        <div class="row">
-            <label>Cỡ chữ:</label>
-            <input type="range" id="scale" min="0.5" max="2" step="0.1" value="1">
-            <label>Bản đồ:</label>
-            <input type="checkbox" id="showGps" checked>
-        </div>
+<div class="row">
+    <label>🔍 Tìm địa điểm:</label>
+    <input type="text" id="mapSearch" style="flex:1" placeholder="Nhập địa chỉ...">
+    <button onclick="searchMap()">Tìm</button>
+</div>
 
-        <div class="row" style="justify-content: center; gap: 20px;">
-            <button id="downloadBtn" class="btn-blue">📥 Tải ảnh hiện tại</button>
-            <button id="zipBtn" style="background: #f57c00; color: white;">📦 Tải tất cả (.ZIP)</button>
-        </div>
+<div class="row">
+    <label>📍 Tọa độ GPS:</label>
+    <input type="text" id="manualCoord" value="" style="flex:1" placeholder="VD: 12.4519176, 107.6249466">
+    <button onclick="applyManualCoord()" style="background:#0288d1;">Áp dụng (thủ công)</button>
+</div>
 
-        <div class="progress-container" id="progContainer">
-            <div class="progress-bar" id="progBar"></div>
-        </div>
+<div class="checkbox-row">
+    <label>👁️ Hiển thị tọa độ GPS:</label>
+    <input type="checkbox" id="showGpsCheckbox" checked>
+</div>
+
+<div class="checkbox-row">
+    <label>⏰ Dùng thời gian tĩnh:</label>
+    <input type="checkbox" id="useStaticTime">
+    <span id="timeStatusBadge" style="background:#f5b400; color:#000; padding:2px 8px; border-radius:20px;">🕒 THỜI GIAN THỰC</span>
+</div>
+<div class="row" id="staticTimeRow" style="display: none;">
+    <label>Ngày (DD/MM/YYYY):</label>
+    <input type="text" id="staticDate" value="18/03/2026" style="width:120px">
+    <label>Giờ:</label>
+    <input type="number" id="staticHour" min="0" max="23" value="12" style="width:70px">
+    <label>Phút:</label>
+    <input type="number" id="staticMinute" min="0" max="59" value="0" style="width:70px">
+    <label>Giây:</label>
+    <input type="number" id="staticSecond" min="0" max="59" value="0" style="width:70px">
+    <button onclick="setStaticToCurrentTime()">📅 Lấy giờ hiện tại</button>
+</div>
+
+<div class="row">
+    <label>✏️ Logo text:</label>
+    <input type="text" id="logoText" value="Timemark" style="flex:1">
+</div>
+<div class="color-row">
+    <label>🎨 Màu text phần 1:</label>
+    <input type="color" id="logoColor1" value="#FFC107">
+    <label>Màu text phần 2:</label>
+    <input type="color" id="logoColor2" value="#FFFFFF">
+    <label>Đảo màu:</label>
+    <input type="checkbox" id="swapLogoColor">
+</div>
+<div class="color-row">
+    <label>🎨 Màu địa chỉ:</label>
+    <input type="color" id="addrColor" value="#FFFFFF">
+</div>
+<div class="row">
+    <label>📝 Ghi chú dọc (phải):</label>
+    <input type="text" id="verticalNote" value="NPRGME2RRP3NWK Timemark Verified" style="flex:1">
+</div>
+<div class="row">
+    <label>🔤 Font địa chỉ/ngày:</label>
+    <select id="fontSelect" style="flex:1"><option value="Inter">Inter</option><option value="Roboto">Roboto</option><option value="Montserrat">Montserrat</option><option value="Lato">Lato</option></select>
+</div>
+<div class="row">
+    <label>⚙️ Weight / Italic:</label>
+    <select id="fontWeight"><option value="400">400</option><option value="700" selected>700</option><option value="900">900</option></select>
+    <label>Nghiêng:</label><input type="checkbox" id="fontItalic">
+    <label style="margin-left:20px;">Font giờ:</label>
+    <select id="timeFontSelect"><option value="Inter">Inter</option><option value="Bebas Neue">Bebas Neue</option></select>
+    <label>Weight:</label><select id="timeFontWeight"><option value="700">700</option><option value="900">900</option></select>
+    <label>Nghiêng:</label><input type="checkbox" id="timeFontItalic">
+</div>
+<div class="row">
+    <label>📏 Cỡ chữ dòng trên:</label><input type="range" id="leftScale" min="0.7" max="1.5" value="1.0" step="0.01">
+    <label>Dòng dưới:</label><input type="range" id="bottomScale" min="0.7" max="1.5" value="1.0" step="0.01">
+    <label>Cỡ giờ:</label><input type="range" id="timeScale" min="0.5" max="2.0" value="1.0" step="0.01">
+    <label>Cỡ ngày:</label><input type="range" id="dateScale" min="0.5" max="2.0" value="1.0" step="0.01">
+</div>
+<div class="slider-row"><label>📆 Cỡ thứ:</label><input type="range" id="dayScale" min="0.5" max="2.0" value="1.0" step="0.01"></div>
+<div class="slider-row"><label>📏 Cỡ logo:</label><input type="range" id="rightScale" min="0.5" max="2.0" value="1.0" step="0.01"></div>
+<div class="slider-row"><label>🟨 Độ dày thanh vàng:</label><input type="range" id="barWidth" min="1" max="10" value="4" step="0.5"></div>
+<div class="slider-row"><label>📐 Chiều cao thanh vàng:</label><input type="range" id="barHeight" min="0.5" max="1.5" value="1.0" step="0.01"></div>
+<div class="slider-row"><label>⬆️ Khoảng cách thứ→địa chỉ:</label><input type="range" id="addrMargin" min="5" max="40" value="20" step="1"></div>
+<div class="slider-row"><label>🔆 Độ mờ text:</label><input type="range" id="textOpacity" min="0" max="1" value="1" step="0.01"></div>
+<div class="slider-row"><label>💡 Bóng (alpha):</label><input type="range" id="shadowOpacity" min="0" max="1" value="0.8" step="0.01"></div>
+<div class="slider-row"><label>💡 Bóng (blur):</label><input type="range" id="shadowBlur" min="0" max="20" value="8" step="0.5"></div>
+<div class="slider-row"><label>📏 Cỡ chữ ghi chú dọc:</label><input type="range" id="noteFontSize" min="10" max="30" value="18" step="0.5"></div>
+<div class="slider-row"><label>🖼️ Chất lượng JPEG:</label><input type="range" id="jpegQuality" min="1" max="100" value="95" step="1"></div>
+
+<div class="row">
+    <button onclick="getCurrentPosition()">📍 LẤY GPS TRÌNH DUYỆT</button>
+    <button onclick="downloadCurrentImage('png')" style="background:#2e7d32;">📥 TẢI ẢNH HIỆN TẠI (PNG)</button>
+    <button onclick="downloadCurrentImage('jpeg')" style="background:#f57c00;">🖼️ TẢI JPEG</button>
+    <button onclick="saveSettings()">💾 LƯU CÀI ĐẶT</button>
+</div>
+<div id="status">Sẵn sàng! Chọn nhiều ảnh, kéo thả khung chữ để điều chỉnh vị trí (tự động lưu tỷ lệ).</div>
+</div>
+
+<!-- Panel danh sách ảnh -->
+<div class="image-list-panel">
+    <h4>📸 Danh sách ảnh đã chọn <span id="imageCount">0</span> ảnh
+        <button id="clearAllImages" style="background:#a94442; padding:4px 12px;">Xóa tất cả</button>
+    </h4>
+    <div class="thumb-list" id="thumbList"></div>
+    <div class="batch-buttons">
+        <button id="processAllBtn" class="primary">⚡ XỬ LÝ TẤT CẢ (ZIP)</button>
+        <button id="processAllJpegBtn">📦 XỬ LÝ & TẢI JPEG (ZIP)</button>
+        <button id="downloadSelectedBtn">🔽 Tải ảnh đang xem</button>
     </div>
+    <div class="progress-bar" id="progressBar"><div class="progress-fill"></div></div>
+</div>
 
-    <div class="panel" id="thumbPanel" style="display:none;">
-        <div class="thumb-list" id="thumbList"></div>
-    </div>
-
+<div class="canvas-container">
     <canvas id="canvas"></canvas>
-    <div id="map"></div>
+    <button class="scroll-top-btn" onclick="window.scrollTo({top:0,behavior:'smooth'})">⬆️</button>
+</div>
 
-    <div class="footer">
-        <p>Phát triển bởi <b>Vũ Đức Thuật</b></p>
+<div id="map"></div>
+<div class="map-controls"><button id="currentLocationBtn" onclick="getCurrentLocationOnMap()">📍 Vị trí hiện tại</button></div>
+
+<div class="footer-logo">
+    <div class="footer-logo-display">
         <a href="https://zalo.me/0866639024" target="_blank">
-            <img src="https://i.postimg.cc/D08K8qBh/IMG-2826.jpg" alt="Logo">
+            <img src="https://i.postimg.cc/D08K8qBh/IMG-2826.jpg" alt="Logo" style="max-width:100%; max-height:120px;">
         </a>
     </div>
 </div>
 
 <script>
-    let images = [];
-    let currentIndex = 0;
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    let map, marker;
-    
-    // Vị trí khung chữ (tọa độ tương đối %)
-    let pos = { x: 0.05, y: 0.8 }; 
-    let isDragging = false;
+// ------------------- CẤU TRÚC DỮ LIỆU NHIỀU ẢNH -------------------
+let imagesList = [];      // mỗi phần tử { id, file, imgElement, name, width, height }
+let currentImageId = null;
+let canvas = document.getElementById('canvas');
+let ctx = canvas.getContext('2d');
+let defaultImgLoaded = false;
 
-    // Khởi tạo Map
-    function initMap() {
-        map = L.map('map').setView([12.238, 109.196], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-        
-        map.on('click', function(e) {
-            updateLocation(e.latlng.lat, e.latlng.lng);
-        });
-    }
+// Tọa độ khối chữ dạng tỷ lệ (0..1)
+let relX = 0.05;    // tỷ lệ theo chiều rộng
+let relY = 0.75;    // tỷ lệ theo chiều cao (gần cuối)
+let dragging = false, dragOffsetRelX = 0, dragOffsetRelY = 0;
 
-    // Lấy vị trí GPS thực tế
-    function getCurrentLocation() {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(pos => {
-                updateLocation(pos.coords.latitude, pos.coords.longitude);
-            });
+let gpsText = "";
+let currentTime = new Date();
+let staticTimeEnabled = false;
+let staticDateStr = "18/03/2026", staticHour=12, staticMinute=0, staticSecond=0;
+
+// Bản đồ
+let map, currentMarker;
+
+// Helper functions
+function getMaxLineLength() { return parseInt(document.getElementById('maxLineLength').value) || 50; }
+function wrapAddress(text, maxLen) {
+    if (text.length <= maxLen) return text;
+    let lines = [];
+    let segments = text.split(/,\s*/);
+    let currentLine = '';
+    for (let seg of segments) {
+        if (currentLine.length + seg.length + 2 <= maxLen) {
+            if (currentLine) currentLine += ', ' + seg;
+            else currentLine = seg;
+        } else {
+            if (currentLine) lines.push(currentLine);
+            if (seg.length > maxLen) {
+                for (let i=0;i<seg.length;i+=maxLen) lines.push(seg.substr(i,maxLen));
+                currentLine = '';
+            } else currentLine = seg;
         }
     }
+    if (currentLine) lines.push(currentLine);
+    if (lines.length===0) for(let i=0;i<text.length;i+=maxLen) lines.push(text.substr(i,maxLen));
+    return lines.join(',\n');
+}
 
-    async function updateLocation(lat, lng) {
-        const coords = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-        document.getElementById('manualCoord').value = coords;
-        
-        if (marker) map.removeLayer(marker);
-        marker = L.marker([lat, lng]).addTo(map);
-        map.setView([lat, lng], 16);
+function autoWrapAddress() {
+    let addr = document.getElementById('address');
+    let raw = addr.value;
+    let wrapped = wrapAddress(raw.replace(/\n/g, ', '), getMaxLineLength());
+    if (wrapped !== raw) addr.value = wrapped;
+}
+document.getElementById('address').addEventListener('blur', autoWrapAddress);
+document.getElementById('maxLineLength')?.addEventListener('input', autoWrapAddress);
+// Thêm thanh trượt maxLineLength vào (chưa có trong HTML cũ, thêm nhanh)
+if(!document.getElementById('maxLineLength')) {
+    let sliderRow = document.createElement('div'); sliderRow.className='slider-row';
+    sliderRow.innerHTML='<label>🔤 Max ký tự mỗi dòng:</label><input type="range" id="maxLineLength" min="30" max="80" value="50" step="1">';
+    document.querySelector('.controls .slider-row:last-child')?.after(sliderRow);
+}
 
-        // Reverse Geocoding (Lấy địa chỉ từ tọa độ)
-        try {
-            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
-            const data = await res.json();
-            if (data.display_name) {
-                document.getElementById('address').value = data.display_name.split(',').slice(0,3).join(',');
-                render();
-            }
-        } catch (e) {}
-    }
-
-    // Xử lý File
-    document.getElementById('fileInput').addEventListener('change', function(e) {
-        const files = Array.from(e.target.files);
-        images = [];
-        document.getElementById('thumbPanel').style.display = 'block';
-        
-        files.forEach((file, index) => {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const img = new Image();
-                img.onload = () => {
-                    images.push({ img, name: file.name });
-                    if (images.length === files.length) {
-                        createThumbs();
-                        selectImage(0);
-                    }
-                };
-                img.src = event.target.result;
-            };
-            reader.readAsDataURL(file);
-        });
-    });
-
-    function createThumbs() {
-        const list = document.getElementById('thumbList');
-        list.innerHTML = '';
-        images.forEach((data, i) => {
-            const div = document.createElement('div');
-            div.className = `thumb-item ${i === currentIndex ? 'active' : ''}`;
-            div.innerHTML = `<img src="${data.img.src}">`;
-            div.onclick = () => selectImage(i);
-            list.appendChild(div);
-        });
-    }
-
-    function selectImage(index) {
-        currentIndex = index;
-        createThumbs();
-        render();
-    }
-
-    // Hàm vẽ chính
-    function render() {
-        if (images.length === 0) return;
-        const imgData = images[currentIndex];
-        const img = imgData.img;
-        
-        canvas.width = img.width;
-        canvas.height = img.height;
-        ctx.drawImage(img, 0, 0);
-
-        const scale = parseFloat(document.getElementById('scale').value);
-        const fontSize = (canvas.height / 25) * scale;
-        const margin = canvas.width * 0.05;
-        
-        const drawX = pos.x * canvas.width;
-        const drawY = pos.y * canvas.height;
-
-        // Vẽ Thời gian
-        const now = new Date();
-        const timeStr = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-        const dateStr = now.toLocaleDateString('vi-VN');
-        const dayStr = now.toLocaleDateString('vi-VN', { weekday: 'long' });
-
-        ctx.shadowColor = "rgba(0,0,0,0.8)";
-        ctx.shadowBlur = 10;
-        
-        // Time
-        ctx.font = `bold ${fontSize * 2.5}px 'Bebas Neue'`;
-        ctx.fillStyle = "white";
-        ctx.fillText(timeStr, drawX, drawY);
-
-        const timeWidth = ctx.measureText(timeStr).width;
-        
-        // Bar
-        ctx.fillStyle = document.getElementById('primaryColor').value;
-        ctx.fillRect(drawX + timeWidth + 15, drawY - (fontSize * 2), 8 * scale, fontSize * 2.2);
-
-        // Date & Day
-        ctx.font = `bold ${fontSize * 0.7}px 'Inter'`;
-        ctx.fillStyle = "white";
-        ctx.fillText(dateStr, drawX + timeWidth + 35, drawY - fontSize);
-        ctx.fillText(dayStr.toUpperCase(), drawX + timeWidth + 35, drawY - 5);
-
-        // Address
-        ctx.font = `${fontSize * 0.6}px 'Inter'`;
-        ctx.fillText(document.getElementById('address').value, drawX, drawY + fontSize);
-
-        // GPS
-        if (document.getElementById('showGps').checked) {
-            ctx.font = `${fontSize * 0.4}px monospace`;
-            ctx.fillStyle = "#aaa";
-            ctx.fillText(document.getElementById('manualCoord').value, drawX, drawY + fontSize * 1.8);
-        }
-
-        // Logo Right
-        ctx.textAlign = "right";
-        ctx.font = `bold ${fontSize * 0.8}px 'Inter'`;
-        ctx.fillStyle = document.getElementById('primaryColor').value;
-        ctx.fillText(document.getElementById('logoText').value, canvas.width - margin, canvas.height - margin);
-        ctx.textAlign = "left";
-    }
-
-    // Tải ảnh đơn
-    document.getElementById('downloadBtn').onclick = () => {
-        const link = document.createElement('a');
-        link.download = `Ducthuat_${Date.now()}.png`;
-        link.href = canvas.toDataURL();
-        link.click();
-    };
-
-    // Xuất ZIP hàng loạt
-    document.getElementById('zipBtn').onclick = async () => {
-        if (images.length === 0) return;
-        const zip = new JSZip();
-        const prog = document.getElementById('progBar');
-        document.getElementById('progContainer').style.display = 'block';
-
-        for (let i = 0; i < images.length; i++) {
-            currentIndex = i;
-            render();
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
-            zip.file(`Photo_${i+1}.jpg`, dataUrl.split(',')[1], {base64: true});
-            prog.style.width = ((i + 1) / images.length * 100) + '%';
-        }
-
-        const content = await zip.generateAsync({type: "blob"});
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(content);
-        link.download = "Ducthuat_Batch_Images.zip";
-        link.click();
-        document.getElementById('progContainer').style.display = 'none';
-    };
-
-    // Kéo thả khung chữ
-    canvas.onmousedown = (e) => { isDragging = true; };
-    window.onmouseup = () => { isDragging = false; };
-    canvas.onmousemove = (e) => {
-        if (isDragging) {
-            const rect = canvas.getBoundingClientRect();
-            pos.x = (e.clientX - rect.left) / rect.width;
-            pos.y = (e.clientY - rect.top) / rect.height;
-            render();
-        }
-    };
-
-    // Hỗ trợ cảm ứng điện thoại
-    canvas.ontouchmove = (e) => {
-        e.preventDefault();
-        const rect = canvas.getBoundingClientRect();
-        const touch = e.touches[0];
-        pos.x = (touch.clientX - rect.left) / rect.width;
-        pos.y = (touch.clientY - rect.top) / rect.height;
-        render();
-    };
-
-    window.onload = initMap;
-</script>
-</body>
-</html>
+// Cập nhật thời gian
+function updateCurrentTime() {
+    if (staticTimeEnabled) {
+        let parts = document.getElementById('staticDate').value.split('/');
+        if(parts.length===3){
+            let d = parseInt(parts[0]), m=parseInt(parts[1])-1, y=parseInt(parts[2]);
+            let h=parseInt(document.getElementById('staticHour').value)||0;
+            let min=parseInt(document.getElementById('staticMinute').value)||0;
+            let s=parseInt(document.getElementById('staticSecond').value)||0;
+            currentTime = new Date(y,m,d,h,min,s);
+        } else currentTime = new Date();
+    } else currentTime = new Date();
+    if (currentImageId !== null) drawCurrentImage();
+}
+setInterval(() => { if(!staticTimeEnabled && currentImageId!==null) updateCurrentTime(); }, 1000);
+document.getElementById('useStaticTime').addEventListener('change', (e)=>{
+    staticTimeEnabled=e.target.checked;
+    document.getElementById('staticTimeRow').style.display=staticTimeEnabled?'flex':'none';
+    updateCurrentTime();
+});
+['staticDate','staticHour','staticMinute','staticSecond'].forEach
