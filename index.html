@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Đức Thuật Pro - Căn chỉnh đỉnh/đáy chính xác</title>
+<title>Đức Thuật Pro - Format địa chỉ kiểu QL., X., H.</title>
 <!-- Leaflet -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -163,7 +163,7 @@ canvas:active { cursor: grabbing; }
 <body>
 
 <div class="controls">
-<h3 style="margin:0 0 15px; color:#f5b400;">📸 Đức Thuật Pro - Căn chỉnh đỉnh/đáy chính xác</h3>
+<h3 style="margin:0 0 15px; color:#f5b400;">📸 Đức Thuật Pro - Địa chỉ dạng QL., X., H.</h3>
 <div class="row">
     <label>📂 Chọn ảnh (nhiều):</label>
     <input type="file" id="uploadMultiple" accept="image/*" multiple>
@@ -176,7 +176,7 @@ canvas:active { cursor: grabbing; }
     <button id="resetRealLocationBtn" style="background:#2c3e66;">🌍 Đặt lại vị trí thật</button>
 </div>
 <div class="row">
-    <textarea id="address" rows="2" placeholder="Địa chỉ chi tiết (tự động xuống dòng)">X Ea Pô, H. Cư Jút, T. Đắk Nông</textarea>
+    <textarea id="address" rows="2" placeholder="Địa chỉ chi tiết (sẽ tự động viết tắt, bỏ Việt Nam)">X Ea Pô, H. Cư Jút, T. Đắk Nông</textarea>
 </div>
 <div class="row">
     <input type="text" id="mapSearch" placeholder="🔍 Tìm địa điểm...">
@@ -231,7 +231,7 @@ canvas:active { cursor: grabbing; }
     <button id="downloadCurrentBtn" style="background:#2e7d32;">📥 Tải ảnh đang xem (PNG)</button>
     <button id="processAllZipBtn" style="background:#f57c00;">📦 XỬ LÝ TẤT CẢ & TẢI ZIP</button>
 </div>
-<div id="status" style="background:#000000aa; padding:8px; border-radius:30px; text-align:center; margin-top:10px;">✅ Sẵn sàng. Nếu chưa chỉnh sửa tọa độ, hệ thống tự lấy vị trí thật.</div>
+<div id="status" style="background:#000000aa; padding:8px; border-radius:30px; text-align:center; margin-top:10px;">✅ Sẵn sàng. Địa chỉ tự động viết tắt, bỏ Việt Nam.</div>
 </div>
 
 <div class="image-list-panel">
@@ -251,7 +251,7 @@ canvas:active { cursor: grabbing; }
 
 <script>
 // ---------- BIẾN TOÀN CỤC ----------
-let images = [];          // { id, file, imgElement, name, width, height }
+let images = [];
 let currentImgId = null;
 let canvas = document.getElementById('canvas');
 let ctx = canvas.getContext('2d');
@@ -260,13 +260,11 @@ let isCoordManuallyEdited = false;
 let currentTime = new Date();
 let staticTimeEnabled = false;
 
-// Vị trí khung chữ (tỷ lệ %)
 let relX = 0.05;
 let relY = 0.78;
 let dragging = false, dragStartRelX = 0, dragStartRelY = 0;
 let leftBlockX = 0, leftBlockY = 0;
 
-// Bản đồ
 let map, currentMarker;
 
 // Ảnh mặc định
@@ -275,51 +273,133 @@ defaultImg.crossOrigin = "Anonymous";
 defaultImg.src = "https://i.postimg.cc/Bt1xMVQ8/IMG-2821.jpg";
 defaultImg.onload = () => {
     if(images.length === 0) {
-        let dummyId = -1;
         images.push({
-            id: dummyId,
+            id: -1,
             imgElement: defaultImg,
             name: "default_background",
             width: defaultImg.width,
             height: defaultImg.height,
             isDefault: true
         });
-        setCurrentImage(dummyId);
-        document.getElementById('status').innerHTML = "✅ Ảnh nền mặc định đã tải. Bạn có thể upload ảnh của mình.";
+        setCurrentImage(-1);
+        document.getElementById('status').innerHTML = "✅ Ảnh nền mặc định đã tải.";
     }
 };
-defaultImg.onerror = () => console.warn("Không tải được ảnh mặc định, vui lòng upload ảnh thủ công.");
+defaultImg.onerror = () => console.warn("Không tải được ảnh mặc định");
 
-// Helper: wrap address
-function wrapAddress(text, maxLen) {
-    if (!text) return "";
-    text = text.replace(/\n/g, ', ');
-    if (text.length <= maxLen) return text;
-    let lines = [], segments = text.split(/,\s*/);
-    let cur = '';
-    for (let s of segments) {
-        if (cur.length + s.length + 2 <= maxLen) {
-            cur += (cur ? ', ' + s : s);
+// ---------- FORMAT ĐỊA CHỈ (viết tắt, bỏ Việt Nam, thay , bằng .) ----------
+function abbreviateAddressPart(part) {
+    part = part.trim();
+    // Thay thế các từ khóa bằng viết tắt (có dấu chấm)
+    const replacements = [
+        { full: /^Quốc lộ\s+/i, short: "QL." },
+        { full: /^Đường\s+/i, short: "Đ." },
+        { full: /^Xã\s+/i, short: "X." },
+        { full: /^Huyện\s+/i, short: "H." },
+        { full: /^Tỉnh\s+/i, short: "T." },
+        { full: /^Thành phố\s+/i, short: "TP." },
+        { full: /^Phường\s+/i, short: "P." },
+        { full: /^Thị trấn\s+/i, short: "TT." },
+        { full: /^Thôn\s+/i, short: "Th." },
+        { full: /^Xóm\s+/i, short: "X." },
+        { full: /^Quận\s+/i, short: "Q." },
+        { full: /^Thị xã\s+/i, short: "TX." }
+    ];
+    for (let r of replacements) {
+        if (r.full.test(part)) {
+            part = part.replace(r.full, r.short + " ");
+            break;
+        }
+    }
+    // Xóa khoảng trắng thừa
+    return part.trim();
+}
+
+function formatAddress(raw) {
+    if (!raw) return "";
+    // Tách bằng dấu phẩy
+    let parts = raw.split(/,\s*/);
+    // Lọc bỏ phần tử rỗng
+    parts = parts.filter(p => p.trim().length > 0);
+    // Nếu phần tử cuối là "Việt Nam" thì bỏ
+    if (parts.length > 0 && parts[parts.length-1].toLowerCase() === "việt nam") {
+        parts.pop();
+    }
+    // Áp dụng viết tắt cho từng phần
+    let abbreviated = parts.map(p => abbreviateAddressPart(p));
+    // Nối bằng dấu chấm + khoảng trắng
+    let result = abbreviated.join(" . ");
+    return result;
+}
+
+// Tự động wrap theo maxLineLength (sau khi đã format)
+function wrapFormattedAddress(formattedAddr, maxLen) {
+    if (formattedAddr.length <= maxLen) return formattedAddr;
+    // Chia theo dấu chấm để ưu tiên xuống dòng tại dấu chấm
+    let segments = formattedAddr.split(" . ");
+    let lines = [];
+    let currentLine = "";
+    for (let seg of segments) {
+        let testLine = currentLine ? currentLine + " . " + seg : seg;
+        if (testLine.length <= maxLen) {
+            currentLine = testLine;
         } else {
-            if (cur) lines.push(cur);
-            cur = s;
-            if (s.length > maxLen) {
-                for (let i=0;i<s.length;i+=maxLen) lines.push(s.substr(i,maxLen));
-                cur = '';
+            if (currentLine) lines.push(currentLine);
+            currentLine = seg;
+            if (seg.length > maxLen) {
+                // Nếu một segment quá dài, cắt cứng
+                for (let i=0; i<seg.length; i+=maxLen) lines.push(seg.substr(i, maxLen));
+                currentLine = "";
             }
         }
     }
-    if (cur) lines.push(cur);
-    return lines.join(',\n');
+    if (currentLine) lines.push(currentLine);
+    if (lines.length === 0) {
+        for (let i=0; i<formattedAddr.length; i+=maxLen) lines.push(formattedAddr.substr(i, maxLen));
+    }
+    return lines.join('\n');
 }
-function autoWrapAddress() {
-    let addr = document.getElementById('address');
+
+// Cập nhật textarea khi blur: format và wrap, nhưng giữ nguyên raw để dễ chỉnh sửa? 
+// Ta sẽ không tự động ghi đè textarea, chỉ format khi vẽ. Tuy nhiên để hiển thị cho người dùng thấy định dạng mới, 
+// ta có thể hiển thị bên cạnh hoặc thay thế tạm thời. Ở đây, ta sẽ format khi vẽ, và khi người dùng nhập xong (blur) 
+// thì cập nhật textarea thành dạng format + wrap? Có thể gây khó chịu. Tốt nhất: giữ nguyên raw trong textarea, 
+// nhưng hiển thị đã format trên ảnh. Để nhất quán, khi lấy địa chỉ từ bản đồ, ta sẽ format và ghi vào textarea dạng format.
+// Người dùng có thể chỉnh sửa thủ công (raw), nhưng khi vẽ ta vẫn format lại.
+// Giải pháp: Hàm getDisplayAddress() lấy raw từ textarea -> format -> wrap -> trả về mảng dòng.
+function getDisplayAddressLines() {
+    let raw = document.getElementById('address').value;
+    let formatted = formatAddress(raw);
     let maxLen = parseInt(document.getElementById('maxLineLength').value) || 50;
-    let wrapped = wrapAddress(addr.value, maxLen);
-    if (wrapped !== addr.value) addr.value = wrapped;
+    let wrapped = wrapFormattedAddress(formatted, maxLen);
+    let lines = wrapped.split('\n');
+    if (lines.length === 0) lines = [""];
+    if (lines.length === 1) lines.push("");
+    return lines.slice(0,2);
 }
-document.getElementById('address').addEventListener('blur', autoWrapAddress);
-document.getElementById('maxLineLength').addEventListener('input', autoWrapAddress);
+
+// Hàm cập nhật textarea từ bản đồ (gọi khi reverse geocode)
+function setAddressFromGeocode(rawAddress) {
+    let formatted = formatAddress(rawAddress);
+    let maxLen = parseInt(document.getElementById('maxLineLength').value) || 50;
+    let wrapped = wrapFormattedAddress(formatted, maxLen);
+    document.getElementById('address').value = wrapped;
+}
+
+// Tự động wrap khi thay đổi maxLineLength (chỉ hiển thị lại)
+function rewrapAddressDisplay() {
+    let raw = document.getElementById('address').value;
+    // Nếu raw đã ở dạng format (chứa dấu .) thì ta giữ nguyên, nếu không thì format lại?
+    // Để an toàn, ta format lại từ raw gốc (có thể đã bị thay đổi thủ công)
+    let formatted = formatAddress(raw);
+    let maxLen = parseInt(document.getElementById('maxLineLength').value) || 50;
+    let wrapped = wrapFormattedAddress(formatted, maxLen);
+    if (wrapped !== raw) {
+        document.getElementById('address').value = wrapped;
+    }
+}
+document.getElementById('maxLineLength').addEventListener('input', rewrapAddressDisplay);
+document.getElementById('address').addEventListener('blur', rewrapAddressDisplay);
 
 // ---------- GPS TỰ ĐỘNG ----------
 async function fetchRealLocationAndUpdate() {
@@ -339,7 +419,7 @@ async function fetchRealLocationAndUpdate() {
             resolve(true);
         }, (err) => {
             console.warn(err);
-            document.getElementById('status').innerHTML = "⚠️ Không lấy được GPS tự động, vui lòng nhập tay hoặc bấm nút lấy GPS.";
+            document.getElementById('status').innerHTML = "⚠️ Không lấy được GPS tự động, vui lòng nhập tay.";
             resolve(false);
         }, { timeout: 8000 });
     });
@@ -347,8 +427,6 @@ async function fetchRealLocationAndUpdate() {
 function tryAutoSetRealLocation() {
     if (!isCoordManuallyEdited && navigator.geolocation) {
         fetchRealLocationAndUpdate();
-    } else if (isCoordManuallyEdited) {
-        document.getElementById('status').innerHTML = "ℹ️ Đã bỏ qua tự động GPS vì bạn đã chỉnh sửa tọa độ thủ công.";
     }
 }
 function resetToRealLocation() {
@@ -361,7 +439,7 @@ function markManualCoordChange() {
     isCoordManuallyEdited = true;
     gpsText = document.getElementById('manualCoord').value.trim();
     if (currentImgId !== null) drawCurrentImage();
-    document.getElementById('status').innerHTML = "✏️ Đã chỉnh sửa tọa độ thủ công, tự động GPS sẽ tạm ngưng.";
+    document.getElementById('status').innerHTML = "✏️ Đã chỉnh sửa tọa độ thủ công.";
 }
 document.getElementById('applyManualBtn').onclick = () => {
     markManualCoordChange();
@@ -384,8 +462,7 @@ async function updateMapLocation(lat, lng) {
         let res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18`);
         let data = await res.json();
         if (data.display_name) {
-            let addr = wrapAddress(data.display_name, parseInt(document.getElementById('maxLineLength').value)||50);
-            document.getElementById('address').value = addr;
+            setAddressFromGeocode(data.display_name);
             if (currentImgId !== null) drawCurrentImage();
         }
     } catch(e) { console.warn(e); }
@@ -423,8 +500,7 @@ function initMap() {
             let res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
             let data = await res.json();
             if (data.display_name) {
-                let addr = wrapAddress(data.display_name, parseInt(document.getElementById('maxLineLength').value)||50);
-                document.getElementById('address').value = addr;
+                setAddressFromGeocode(data.display_name);
             }
         } catch(e) {}
         if (currentImgId !== null) drawCurrentImage();
@@ -556,7 +632,7 @@ function setCurrentImage(id) {
     drawCurrentImage();
 }
 
-// ---------- VẼ CHÍNH (căn chỉnh đỉnh/đáy) ----------
+// ---------- VẼ CHÍNH (căn chỉnh đỉnh/đáy + địa chỉ đã format) ----------
 function drawCurrentImage() {
     let imgObj = images.find(i => i.id === currentImgId);
     if (!imgObj) return;
@@ -617,9 +693,9 @@ function drawCurrentImage() {
     let timeStr = `${currentTime.getHours().toString().padStart(2,'0')}:${currentTime.getMinutes().toString().padStart(2,'0')}`;
     let dateStr = `${currentTime.getDate().toString().padStart(2,'0')}/${(currentTime.getMonth()+1).toString().padStart(2,'0')}/${currentTime.getFullYear()}`;
     let dayStr = currentTime.toLocaleDateString('vi-VN', { weekday: 'long' });
-    let addrRaw = document.getElementById('address').value.trim() || "Không có địa chỉ";
-    let addrLines = addrRaw.split('\n').slice(0,2);
-    if (addrLines.length===1) addrLines.push("");
+    
+    // Lấy địa chỉ đã format và wrap
+    let addrLines = getDisplayAddressLines();
     
     // Vẽ giờ trước để lấy chiều rộng
     ctx.font = `${timeItalic?'italic':''} ${timeFontWeight} ${timeFontSize}px ${timeFontFamily}`;
@@ -630,29 +706,23 @@ function drawCurrentImage() {
     let barTop = leftBlockY;
     let barBottom = barTop + barHeightPx;
     
-    // Vẽ thanh vàng
     ctx.fillStyle = '#FFC107';
     ctx.fillRect(barX, barTop, barWidthPx, barHeightPx);
     
     let rightColX = barX + barWidthPx + 12;
     
-    // ---- Căn chỉnh chính xác cho chữ Thứ và Ngày tháng ----
-    // Đo metrics của chữ Thứ (cùng font với ngày tháng)
+    // Chữ Thứ (đỉnh chạm đỉnh thanh)
     ctx.font = `${fontItalic?'italic':''} ${fontWeight} ${dayFontSize}px ${fontFamily}`;
     let dayMetrics = ctx.measureText(dayStr);
     let dayAscent = dayMetrics.actualBoundingBoxAscent || dayFontSize * 0.8;
-    let dayDescent = dayMetrics.actualBoundingBoxDescent || dayFontSize * 0.2;
-    // Đỉnh chữ Thứ = barTop
     let dayY = barTop + dayAscent;
     
+    // Chữ Ngày tháng (đáy chạm đáy thanh)
     ctx.font = `${fontItalic?'italic':''} ${fontWeight} ${dateFontSize}px ${fontFamily}`;
     let dateMetrics = ctx.measureText(dateStr);
-    let dateAscent = dateMetrics.actualBoundingBoxAscent || dateFontSize * 0.8;
     let dateDescent = dateMetrics.actualBoundingBoxDescent || dateFontSize * 0.2;
-    // Đáy chữ Ngày tháng = barBottom
     let dateY = barBottom - dateDescent;
     
-    // Vẽ chữ Thứ và Ngày tháng với shadow
     ctx.shadowColor = `rgba(0,0,0,${shadowOpacity})`;
     ctx.shadowBlur = shadowBlur;
     ctx.fillStyle = `rgba(255,255,220,${textOpacity*0.85})`;
@@ -660,24 +730,24 @@ function drawCurrentImage() {
     ctx.fillStyle = `rgba(255,255,255,${textOpacity*0.95})`;
     ctx.fillText(dateStr, rightColX, dateY);
     
-    // Vẽ giờ (giữ nguyên baseline alphabetic)
+    // Vẽ giờ
     ctx.font = `${timeItalic?'italic':''} ${timeFontWeight} ${timeFontSize}px ${timeFontFamily}`;
     ctx.fillStyle = `rgba(255,255,255,${textOpacity})`;
-    let timeY = leftBlockY + timeFontSize * 0.8; // giữ nguyên để dễ kéo thả
+    let timeY = leftBlockY + timeFontSize * 0.8;
     ctx.fillText(timeStr, leftBlockX, timeY);
     
     // Vẽ địa chỉ
-    let dayBaseline = dayY - dayAscent; // đỉnh của chữ Thứ
+    let dayBaseline = dayY - dayAscent;
     let addrStartY = dayBaseline + dayFontSize + addrMarginTop;
     ctx.font = `${fontItalic?'italic':''} ${fontWeight} ${addrFontSize}px ${fontFamily}`;
     let rgbAddr = parseInt(addrColor.slice(1,3),16)+','+parseInt(addrColor.slice(3,5),16)+','+parseInt(addrColor.slice(5,7),16);
     ctx.fillStyle = `rgba(${rgbAddr},${textOpacity*0.85})`;
     ctx.fillText(addrLines[0], leftBlockX, addrStartY);
-    if(addrLines[1]){
+    if(addrLines[1] && addrLines[1].trim() !== "") {
         ctx.fillText(addrLines[1], leftBlockX, addrStartY + addrFontSize + 5);
     }
     
-    // Logo text
+    // Logo
     if(logoText){
         let logoFontWeight = getSelect('logoFontWeight', '700');
         let logoItalic = getChecked('logoFontItalic', false);
@@ -718,10 +788,9 @@ function drawCurrentImage() {
         ctx.restore();
     }
     ctx.shadowColor = 'transparent';
-    ctx.shadowBlur = 0;
 }
 
-// KÉO THẢ (giữ nguyên)
+// KÉO THẢ
 function handleDragStart(e) {
     dragging = true;
     let rect = canvas.getBoundingClientRect();
@@ -875,7 +944,6 @@ window.addEventListener('load', () => {
     setTimeout(() => {
         if(!isCoordManuallyEdited) tryAutoSetRealLocation();
     }, 1000);
-    // Bổ sung các control ẩn nếu thiếu
     let needed = ['fontWeight','timeFontWeight','fontItalic','timeFontItalic','logoFontWeight','logoFontItalic'];
     needed.forEach(id => {
         if(!document.getElementById(id)){
