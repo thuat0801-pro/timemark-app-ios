@@ -232,7 +232,6 @@ canvas:active { cursor: grabbing; }
 <div class="slider-row"><label>📅 Cỡ ngày/thứ:</label><input type="range" id="dateScale" min="0.5" max="1.8" value="1.0" step="0.01"></div>
 <div class="slider-row"><label>📏 Cỡ logo:</label><input type="range" id="rightScale" min="0.5" max="2.0" value="1.0" step="0.01"></div>
 <div class="slider-row"><label>🟨 Độ dày thanh vàng:</label><input type="range" id="barWidth" min="2" max="12" value="4" step="0.5"></div>
-<div class="slider-row"><label>⬆️ Khoảng cách địa chỉ (sau thứ):</label><input type="range" id="addrMargin" min="5" max="60" value="20" step="1"></div>
 <div class="slider-row"><label>🔆 Độ mờ text:</label><input type="range" id="textOpacity" min="0" max="1" value="1" step="0.01"></div>
 <div class="slider-row"><label>💡 Bóng đổ:</label><input type="range" id="shadowOpacity" min="0" max="1" value="0.8" step="0.01"></div>
 <div class="slider-row"><label>📝 Cỡ ghi chú dọc:</label><input type="range" id="noteFontSize" min="12" max="32" value="18" step="0.5"></div>
@@ -274,7 +273,7 @@ let gpsText = "";
 let isCoordManuallyEdited = false;
 let currentTime = new Date();
 let staticTimeEnabled = false;
-let relX = 0.05, relY = 0.78;   
+let relX = 0.05, relY = 0.75;   
 let dragging = false, dragStartRelX = 0, dragStartRelY = 0;
 let leftBlockX = 0, leftBlockY = 0;
 let map, currentMarker;
@@ -545,7 +544,7 @@ async function downloadSingleImage(id){
     else drawCurrentImage();
 }
 
-// ========== VẼ TEXT CHÍNH (CẬP NHẬT THANH VÀNG) ==========
+// ========== VẼ TEXT CHÍNH (TỰ ĐỘNG CĂN CHỈNH KHOẢNG CÁCH) ==========
 function drawTextOverlay(){
     const getVal = (id,def)=>{ let el=document.getElementById(id); return el?parseFloat(el.value):def; };
     const getChecked = (id,def)=>{ let el=document.getElementById(id); return el?el.checked:def; };
@@ -557,7 +556,6 @@ function drawTextOverlay(){
     let dateScale = getVal('dateScale',1.0);
     let rightScale = getVal('rightScale',1.0);
     let barWidthVal = getVal('barWidth',4);
-    let addrMarginTop = getVal('addrMargin',20) * (canvas.height/1080);
     let textOpacity = getVal('textOpacity',1);
     let shadowOpacity = getVal('shadowOpacity',0.8);
     let noteFontSize = getVal('noteFontSize',18) * (canvas.height/1080);
@@ -582,22 +580,20 @@ function drawTextOverlay(){
     ctx.font = `700 ${timeFontSize}px ${timeFontFamily}`;
     let timeMetrics = ctx.measureText(timeStr);
     let timeWidth = timeMetrics.width;
-    let timeActualHeight = (timeMetrics.actualBoundingBoxAscent || timeFontSize*0.8) + (timeMetrics.actualBoundingBoxDescent || timeFontSize*0.2);
     let timeAscent = timeMetrics.actualBoundingBoxAscent || timeFontSize*0.8;
     let timeDescent = timeMetrics.actualBoundingBoxDescent || timeFontSize*0.2;
+    let timeActualHeight = timeAscent + timeDescent;
     
     // 2. Vị trí block giờ
     let barX = leftBlockX + timeWidth + 12;
     let barWidthPx = barWidthVal * (canvas.width/1080);
-    // Chiều cao thanh vàng BẰNG CHÍNH CHIỀU CAO THỰC CỦA CHỮ GIỜ (từ đỉnh đến đáy)
     let barHeightPx = timeActualHeight;
     let barTop = leftBlockY;
     let barBottom = barTop + barHeightPx;
     
-    // VẼ THANH VÀNG: đỉnh = đỉnh chữ giờ, đáy = đáy chữ giờ
+    // VẼ THANH VÀNG
     ctx.fillStyle = '#FFC107';
     ctx.fillRect(barX, barTop, barWidthPx, barHeightPx);
-    
     let rightColX = barX + barWidthPx + 12;
     
     // 3. Vẽ chữ Thứ & Ngày
@@ -621,22 +617,29 @@ function drawTextOverlay(){
     ctx.fillStyle = commonColor;
     ctx.fillText(dateStr, rightColX, dateY);
     
-    // 4. Vẽ giờ (màu trắng)
+    // 4. Vẽ giờ
     ctx.font = `700 ${timeFontSize}px ${timeFontFamily}`;
     ctx.fillStyle = `rgba(255,255,255,${textOpacity})`;
     let timeY = leftBlockY + timeAscent;
     ctx.fillText(timeStr, leftBlockX, timeY);
     
-    // 5. Địa chỉ (cách chữ Thứ)
+    // 5. Địa chỉ với khoảng cách TỰ ĐỘNG dựa trên kích thước font, không bị đè
     let dayBaseline = dayY - dayAscent;
-    let addrStartY = dayBaseline + dayFontSize + addrMarginTop;
-    ctx.font = `400 ${24 * (canvas.height/1080) * addrFontScale}px ${fontFamily}`;
+    // Khoảng cách linh hoạt: bằng 1.2 lần chiều cao chữ Thứ, đảm bảo không đè và thoáng
+    let dynamicSpacing = dayFontSize * 1.2;
+    let addrStartY = dayBaseline + dayFontSize + dynamicSpacing;
+    
+    let addrFontSizePx = 24 * (canvas.height/1080) * addrFontScale;
+    ctx.font = `400 ${addrFontSizePx}px ${fontFamily}`;
     let rgbAddr = parseInt(addrColor.slice(1,3),16)+','+parseInt(addrColor.slice(3,5),16)+','+parseInt(addrColor.slice(5,7),16);
     ctx.fillStyle = `rgba(${rgbAddr},${textOpacity*0.85})`;
+    
+    // Dòng 1 địa chỉ
     ctx.fillText(addrLines[0], leftBlockX, addrStartY);
+    // Dòng 2 nếu có, cách dòng 1 bằng 1.2 lần cỡ chữ địa chỉ
     if(addrLines[1] && addrLines[1].trim() !== ""){
-        let addrFontSizePx = 24 * (canvas.height/1080) * addrFontScale;
-        ctx.fillText(addrLines[1], leftBlockX, addrStartY + addrFontSizePx + 6);
+        let line2Y = addrStartY + addrFontSizePx * 1.2;
+        ctx.fillText(addrLines[1], leftBlockX, line2Y);
     }
     
     // 6. Logo góc phải
@@ -747,7 +750,6 @@ document.getElementById('saveSettingsBtn').onclick = ()=>{
         dateScale: getVal('dateScale',1),
         rightScale: getVal('rightScale',1),
         barWidth: getVal('barWidth',4),
-        addrMargin: getVal('addrMargin',20),
         textOpacity: getVal('textOpacity',1),
         shadowOpacity: getVal('shadowOpacity',0.8),
         noteFontSize: getVal('noteFontSize',18),
@@ -782,7 +784,6 @@ function loadSettings(){
         if(c.dateScale) document.getElementById('dateScale').value = c.dateScale;
         if(c.rightScale) document.getElementById('rightScale').value = c.rightScale;
         if(c.barWidth) document.getElementById('barWidth').value = c.barWidth;
-        if(c.addrMargin) document.getElementById('addrMargin').value = c.addrMargin;
         if(c.textOpacity) document.getElementById('textOpacity').value = c.textOpacity;
         if(c.shadowOpacity) document.getElementById('shadowOpacity').value = c.shadowOpacity;
         if(c.noteFontSize) document.getElementById('noteFontSize').value = c.noteFontSize;
@@ -858,12 +859,6 @@ window.addEventListener('load', ()=>{
         pb.style.display='none';
     }
     document.getElementById('progressBar').style.display='none';
-    ['fontWeight','timeFontWeight','fontItalic','timeFontItalic','logoFontWeight','logoFontItalic'].forEach(id=>{
-        if(!document.getElementById(id)){
-            let inp = document.createElement('input'); inp.type='hidden'; inp.id=id; inp.value= id.includes('Italic')?'false':'700';
-            document.body.appendChild(inp);
-        }
-    });
 });
 </script>
 </body>
