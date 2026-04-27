@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Đức Thuật Pro - Batch + Vị trí thật (Gộp cỡ chữ địa chỉ)</title>
+<title>Đức Thuật Pro - Căn chỉnh đỉnh/đáy chính xác</title>
 <!-- Leaflet -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -12,9 +12,7 @@
 <!-- Google Fonts -->
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&family=Montserrat:wght@400;700&family=Roboto&family=Bebas+Neue&family=Lato&display=swap" rel="stylesheet">
 <style>
-* {
-    box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 body {
     font-family: 'Inter', sans-serif;
     background: url('https://i.postimg.cc/Bt1xMVQ8/IMG-2821.jpg') no-repeat center fixed;
@@ -26,7 +24,7 @@ body {
 body::before {
     content: "";
     position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
+    top:0; left:0; width:100%; height:100%;
     background: rgba(0,0,0,0.55);
     pointer-events: none;
     z-index: 0;
@@ -165,7 +163,7 @@ canvas:active { cursor: grabbing; }
 <body>
 
 <div class="controls">
-<h3 style="margin:0 0 15px; color:#f5b400;">📸 Đức Thuật Pro - Xử lý nhiều ảnh + Vị trí thật (Gộp cỡ chữ địa chỉ)</h3>
+<h3 style="margin:0 0 15px; color:#f5b400;">📸 Đức Thuật Pro - Căn chỉnh đỉnh/đáy chính xác</h3>
 <div class="row">
     <label>📂 Chọn ảnh (nhiều):</label>
     <input type="file" id="uploadMultiple" accept="image/*" multiple>
@@ -218,7 +216,7 @@ canvas:active { cursor: grabbing; }
 <div class="slider-row"><label>📅 Cỡ ngày/thứ:</label><input type="range" id="dateScale" min="0.5" max="1.8" value="1.0" step="0.01"></div>
 <div class="slider-row"><label>📏 Cỡ logo:</label><input type="range" id="rightScale" min="0.5" max="2.0" value="1.0" step="0.01"></div>
 <div class="slider-row"><label>🟨 Độ dày thanh vàng:</label><input type="range" id="barWidth" min="2" max="12" value="4" step="0.5"></div>
-<div class="slider-row"><label>📐 Chiều cao thanh vàng:</label><input type="range" id="barHeight" min="0.5" max="1.5" value="1.0" step="0.01"></div>
+<div class="slider-row"><label>📐 Chiều cao thanh vàng (hệ số so với cỡ giờ):</label><input type="range" id="barHeight" min="0.5" max="1.5" value="1.0" step="0.01"></div>
 <div class="slider-row"><label>⬆️ Khoảng cách thứ→địa chỉ:</label><input type="range" id="addrMargin" min="5" max="50" value="20" step="1"></div>
 <div class="slider-row"><label>🔆 Độ mờ text:</label><input type="range" id="textOpacity" min="0" max="1" value="1" step="0.01"></div>
 <div class="slider-row"><label>💡 Bóng (alpha):</label><input type="range" id="shadowOpacity" min="0" max="1" value="0.8" step="0.01"></div>
@@ -271,7 +269,7 @@ let leftBlockX = 0, leftBlockY = 0;
 // Bản đồ
 let map, currentMarker;
 
-// Ảnh mặc định (dùng để hiển thị khi chưa upload)
+// Ảnh mặc định
 let defaultImg = new Image();
 defaultImg.crossOrigin = "Anonymous";
 defaultImg.src = "https://i.postimg.cc/Bt1xMVQ8/IMG-2821.jpg";
@@ -558,7 +556,7 @@ function setCurrentImage(id) {
     drawCurrentImage();
 }
 
-// HÀM VẼ ẢNH HIỆN TẠI (đã gộp cỡ chữ địa chỉ)
+// ---------- VẼ CHÍNH (căn chỉnh đỉnh/đáy) ----------
 function drawCurrentImage() {
     let imgObj = images.find(i => i.id === currentImgId);
     if (!imgObj) return;
@@ -582,7 +580,7 @@ function drawCurrentImage() {
         return el ? el.value : def;
     };
     
-    let addrFontScale = getVal('addrFontScale', 1.0);   // thanh duy nhất cho cả 2 dòng
+    let addrFontScale = getVal('addrFontScale', 1.0);
     let timeScale = getVal('timeScale', 1.0);
     let dateScale = getVal('dateScale', 1.0);
     let rightScale = getVal('rightScale', 1.0);
@@ -594,14 +592,14 @@ function drawCurrentImage() {
     let shadowBlur = getVal('shadowBlur', 8);
     let noteFontSize = getVal('noteFontSize', 18) * (canvas.height/1080);
     let notePadding = 15 * (canvas.width/1080);
+    
     let timeFontSize = 100 * (canvas.height/1080) * timeScale;
     let dateFontSize = 30 * (canvas.height/1080) * dateScale;
     let dayFontSize = 26 * (canvas.height/1080) * dateScale;
-    // Áp dụng cùng 1 hệ số cho cả 2 dòng địa chỉ
-    let addrFontSizeTop = 24 * (canvas.height/1080) * addrFontScale;
-    let addrFontSizeBottom = 24 * (canvas.height/1080) * addrFontScale;
+    let addrFontSize = 24 * (canvas.height/1080) * addrFontScale;
     let logoFontSize = 28 * (canvas.width/1080) * rightScale;
     let subFontSize = 20 * (canvas.width/1080);
+    
     let fontFamily = getSelect('fontSelect', 'Inter');
     let timeFontFamily = getSelect('timeFontSelect', 'Bebas Neue');
     let fontWeight = getSelect('fontWeight', '700');
@@ -623,35 +621,63 @@ function drawCurrentImage() {
     let addrLines = addrRaw.split('\n').slice(0,2);
     if (addrLines.length===1) addrLines.push("");
     
-    let timeY = leftBlockY + timeFontSize*0.8;
-    let dateY = leftBlockY + timeFontSize*0.6;
-    let dayY = leftBlockY + timeFontSize*0.4;
-    
-    ctx.shadowColor = `rgba(0,0,0,${shadowOpacity})`;
-    ctx.shadowBlur = shadowBlur;
+    // Vẽ giờ trước để lấy chiều rộng
     ctx.font = `${timeItalic?'italic':''} ${timeFontWeight} ${timeFontSize}px ${timeFontFamily}`;
-    ctx.fillStyle = `rgba(255,255,255,${textOpacity})`;
-    ctx.fillText(timeStr, leftBlockX, timeY);
     let timeWidth = ctx.measureText(timeStr).width;
     let barX = leftBlockX + timeWidth + 12;
     let barWidthPx = barWidthVal * (canvas.width/1080);
+    let barHeightPx = timeFontSize * barHeightFactor;
+    let barTop = leftBlockY;
+    let barBottom = barTop + barHeightPx;
+    
+    // Vẽ thanh vàng
     ctx.fillStyle = '#FFC107';
-    ctx.fillRect(barX, leftBlockY, barWidthPx, timeFontSize*barHeightFactor);
+    ctx.fillRect(barX, barTop, barWidthPx, barHeightPx);
+    
     let rightColX = barX + barWidthPx + 12;
-    ctx.font = `${fontItalic?'italic':''} ${fontWeight} ${dateFontSize}px ${fontFamily}`;
-    ctx.fillStyle = `rgba(255,255,255,${textOpacity*0.95})`;
-    ctx.fillText(dateStr, rightColX, dateY);
+    
+    // ---- Căn chỉnh chính xác cho chữ Thứ và Ngày tháng ----
+    // Đo metrics của chữ Thứ (cùng font với ngày tháng)
     ctx.font = `${fontItalic?'italic':''} ${fontWeight} ${dayFontSize}px ${fontFamily}`;
+    let dayMetrics = ctx.measureText(dayStr);
+    let dayAscent = dayMetrics.actualBoundingBoxAscent || dayFontSize * 0.8;
+    let dayDescent = dayMetrics.actualBoundingBoxDescent || dayFontSize * 0.2;
+    // Đỉnh chữ Thứ = barTop
+    let dayY = barTop + dayAscent;
+    
+    ctx.font = `${fontItalic?'italic':''} ${fontWeight} ${dateFontSize}px ${fontFamily}`;
+    let dateMetrics = ctx.measureText(dateStr);
+    let dateAscent = dateMetrics.actualBoundingBoxAscent || dateFontSize * 0.8;
+    let dateDescent = dateMetrics.actualBoundingBoxDescent || dateFontSize * 0.2;
+    // Đáy chữ Ngày tháng = barBottom
+    let dateY = barBottom - dateDescent;
+    
+    // Vẽ chữ Thứ và Ngày tháng với shadow
+    ctx.shadowColor = `rgba(0,0,0,${shadowOpacity})`;
+    ctx.shadowBlur = shadowBlur;
     ctx.fillStyle = `rgba(255,255,220,${textOpacity*0.85})`;
     ctx.fillText(dayStr, rightColX, dayY);
-    ctx.font = `${fontItalic?'italic':''} ${fontWeight} ${addrFontSizeTop}px ${fontFamily}`;
+    ctx.fillStyle = `rgba(255,255,255,${textOpacity*0.95})`;
+    ctx.fillText(dateStr, rightColX, dateY);
+    
+    // Vẽ giờ (giữ nguyên baseline alphabetic)
+    ctx.font = `${timeItalic?'italic':''} ${timeFontWeight} ${timeFontSize}px ${timeFontFamily}`;
+    ctx.fillStyle = `rgba(255,255,255,${textOpacity})`;
+    let timeY = leftBlockY + timeFontSize * 0.8; // giữ nguyên để dễ kéo thả
+    ctx.fillText(timeStr, leftBlockX, timeY);
+    
+    // Vẽ địa chỉ
+    let dayBaseline = dayY - dayAscent; // đỉnh của chữ Thứ
+    let addrStartY = dayBaseline + dayFontSize + addrMarginTop;
+    ctx.font = `${fontItalic?'italic':''} ${fontWeight} ${addrFontSize}px ${fontFamily}`;
     let rgbAddr = parseInt(addrColor.slice(1,3),16)+','+parseInt(addrColor.slice(3,5),16)+','+parseInt(addrColor.slice(5,7),16);
     ctx.fillStyle = `rgba(${rgbAddr},${textOpacity*0.85})`;
-    ctx.fillText(addrLines[0], leftBlockX, dayY + dayFontSize*0.4 + addrMarginTop);
+    ctx.fillText(addrLines[0], leftBlockX, addrStartY);
     if(addrLines[1]){
-        ctx.font = `${fontItalic?'italic':''} ${fontWeight} ${addrFontSizeBottom}px ${fontFamily}`;
-        ctx.fillText(addrLines[1], leftBlockX, dayY + dayFontSize*0.4 + addrMarginTop + addrFontSizeTop + 5);
+        ctx.fillText(addrLines[1], leftBlockX, addrStartY + addrFontSize + 5);
     }
+    
+    // Logo text
     if(logoText){
         let logoFontWeight = getSelect('logoFontWeight', '700');
         let logoItalic = getChecked('logoFontItalic', false);
@@ -672,11 +698,15 @@ function drawCurrentImage() {
         ctx.fillText('100% Chân thực', logoX, logoYBase);
         ctx.textAlign = 'left';
     }
+    
+    // GPS
     if(showGps && gpsText){
         ctx.font = `400 ${20*(canvas.height/1080)}px ${fontFamily}`;
         ctx.fillStyle = `rgba(160,220,255,${textOpacity})`;
         ctx.fillText(gpsText, leftBlockX, canvas.height - 15);
     }
+    
+    // Ghi chú dọc
     if(verticalNote){
         ctx.save();
         ctx.font = `${fontItalic?'italic':''} ${fontWeight} ${noteFontSize}px ${fontFamily}`;
@@ -688,9 +718,10 @@ function drawCurrentImage() {
         ctx.restore();
     }
     ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
 }
 
-// KÉO THẢ
+// KÉO THẢ (giữ nguyên)
 function handleDragStart(e) {
     dragging = true;
     let rect = canvas.getBoundingClientRect();
