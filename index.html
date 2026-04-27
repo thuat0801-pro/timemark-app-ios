@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Đức Thuật Pro - Batch Timemark</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Bebas+Neue&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary: #f5b400;
+            --bg-dark: #121212;
+            --panel-bg: rgba(30, 30, 30, 0.95);
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #1a1a1a;
+            color: white;
+            margin: 0;
+            padding: 10px;
+            background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('https://i.postimg.cc/Bt1xMVQ8/IMG-2821.jpg');
+            background-size: cover;
+            background-attachment: fixed;
+        }
+
+        .container { max-width: 1000px; margin: 0 auto; }
+
+        /* Controls Section */
+        .panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border: 1px solid var(--primary);
+        }
+
+        h2 { color: var(--primary); margin-top: 0; font-size: 1.5rem; text-align: center; }
+
+        .form-group { margin-bottom: 15px; }
+        .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 10px; }
+        
+        input[type="text"], input[type="number"], textarea, select {
+            background: #252525;
+            border: 1px solid #444;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 12px;
+            outline: none;
+        }
+        
+        input:focus { border-color: var(--primary); }
+
+        button {
+            background: var(--primary);
+            color: black;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        button:active { transform: scale(0.95); }
+        .btn-blue { background: #0288d1; color: white; }
+        .btn-green { background: #4caf50; color: white; }
+        .btn-red { background: #d32f2f; color: white; }
+
+        /* Canvas & Preview */
+        #canvas {
+            width: 100%;
+            height: auto;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            display: block;
+            margin: 20px 0;
+            cursor: move;
+        }
+
+        /* Image List */
+        .thumb-list {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding: 10px 0;
+        }
+        .thumb-item {
+            width: 80px; height: 80px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 2px solid transparent;
+            flex-shrink: 0;
+            cursor: pointer;
+            position: relative;
+        }
+        .thumb-item.active { border-color: var(--primary); }
+        .thumb-item img { width: 100%; height: 100%; object-fit: cover; }
+
+        #map { height: 250px; width: 100%; border-radius: 15px; margin: 15px 0; border: 1px solid var(--primary); }
+
+        .progress-container {
+            width: 100%;
+            background: #333;
+            height: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            display: none;
+        }
+        .progress-bar { width: 0%; height: 100%; background: var(--primary); border-radius: 5px; transition: 0.3s; }
+        
+        .footer { text-align: center; margin-top: 30px; opacity: 0.8; }
+        .footer img { max-width: 150px; border-radius: 50%; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="panel">
+        <h2>📸 ĐỨC THUẬT PRO - BATCH V3.0</h2>
+        
+        <div class="form-group">
+            <label>📂 Chọn ảnh xử lý hàng loạt:</label><br><br>
+            <input type="file" id="fileInput" multiple accept="image/*">
+            <button class="btn-red" id="clearBtn">Xóa danh sách</button>
+        </div>
+
+        <div class="row">
+            <input type="text" id="address" style="flex: 1;" placeholder="Địa chỉ hiển thị trên ảnh...">
+            <button class="btn-green" onclick="getCurrentLocation()">📍 GPS</button>
+        </div>
+
+        <div class="row">
+            <input type="text" id="manualCoord" style="flex: 1;" placeholder="Tọa độ (Lat, Lng)">
+            <input type="text" id="logoText" style="width: 120px;" value="Timemark">
+            <input type="color" id="primaryColor" value="#FFC107">
+        </div>
+
+        <div class="row">
+            <label>Cỡ chữ:</label>
+            <input type="range" id="scale" min="0.5" max="2" step="0.1" value="1">
+            <label>Bản đồ:</label>
+            <input type="checkbox" id="showGps" checked>
+        </div>
+
+        <div class="row" style="justify-content: center; gap: 20px;">
+            <button id="downloadBtn" class="btn-blue">📥 Tải ảnh hiện tại</button>
+            <button id="zipBtn" style="background: #f57c00; color: white;">📦 Tải tất cả (.ZIP)</button>
+        </div>
+
+        <div class="progress-container" id="progContainer">
+            <div class="progress-bar" id="progBar"></div>
+        </div>
+    </div>
+
+    <div class="panel" id="thumbPanel" style="display:none;">
+        <div class="thumb-list" id="thumbList"></div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+    <div id="map"></div>
+
+    <div class="footer">
+        <p>Phát triển bởi <b>Vũ Đức Thuật</b></p>
+        <a href="https://zalo.me/0866639024" target="_blank">
+            <img src="https://i.postimg.cc/D08K8qBh/IMG-2826.jpg" alt="Logo">
+        </a>
+    </div>
+</div>
+
+<script>
+    let images = [];
+    let currentIndex = 0;
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    let map, marker;
+    
+    // Vị trí khung chữ (tọa độ tương đối %)
+    let pos = { x: 0.05, y: 0.8 }; 
+    let isDragging = false;
+
+    // Khởi tạo Map
+    function initMap() {
+        map = L.map('map').setView([12.238, 109.196], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        
+        map.on('click', function(e) {
+            updateLocation(e.latlng.lat, e.latlng.lng);
+        });
+    }
+
+    // Lấy vị trí GPS thực tế
+    function getCurrentLocation() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(pos => {
+                updateLocation(pos.coords.latitude, pos.coords.longitude);
+            });
+        }
+    }
+
+    async function updateLocation(lat, lng) {
+        const coords = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+        document.getElementById('manualCoord').value = coords;
+        
+        if (marker) map.removeLayer(marker);
+        marker = L.marker([lat, lng]).addTo(map);
+        map.setView([lat, lng], 16);
+
+        // Reverse Geocoding (Lấy địa chỉ từ tọa độ)
+        try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+            const data = await res.json();
+            if (data.display_name) {
+                document.getElementById('address').value = data.display_name.split(',').slice(0,3).join(',');
+                render();
+            }
+        } catch (e) {}
+    }
+
+    // Xử lý File
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+        const files = Array.from(e.target.files);
+        images = [];
+        document.getElementById('thumbPanel').style.display = 'block';
+        
+        files.forEach((file, index) => {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    images.push({ img, name: file.name });
+                    if (images.length === files.length) {
+                        createThumbs();
+                        selectImage(0);
+                    }
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    });
+
+    function createThumbs() {
+        const list = document.getElementById('thumbList');
+        list.innerHTML = '';
+        images.forEach((data, i) => {
+            const div = document.createElement('div');
+            div.className = `thumb-item ${i === currentIndex ? 'active' : ''}`;
+            div.innerHTML = `<img src="${data.img.src}">`;
+            div.onclick = () => selectImage(i);
+            list.appendChild(div);
+        });
+    }
+
+    function selectImage(index) {
+        currentIndex = index;
+        createThumbs();
+        render();
+    }
+
+    // Hàm vẽ chính
+    function render() {
+        if (images.length === 0) return;
+        const imgData = images[currentIndex];
+        const img = imgData.img;
+        
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+
+        const scale = parseFloat(document.getElementById('scale').value);
+        const fontSize = (canvas.height / 25) * scale;
+        const margin = canvas.width * 0.05;
+        
+        const drawX = pos.x * canvas.width;
+        const drawY = pos.y * canvas.height;
+
+        // Vẽ Thời gian
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+        const dateStr = now.toLocaleDateString('vi-VN');
+        const dayStr = now.toLocaleDateString('vi-VN', { weekday: 'long' });
+
+        ctx.shadowColor = "rgba(0,0,0,0.8)";
+        ctx.shadowBlur = 10;
+        
+        // Time
+        ctx.font = `bold ${fontSize * 2.5}px 'Bebas Neue'`;
+        ctx.fillStyle = "white";
+        ctx.fillText(timeStr, drawX, drawY);
+
+        const timeWidth = ctx.measureText(timeStr).width;
+        
+        // Bar
+        ctx.fillStyle = document.getElementById('primaryColor').value;
+        ctx.fillRect(drawX + timeWidth + 15, drawY - (fontSize * 2), 8 * scale, fontSize * 2.2);
+
+        // Date & Day
+        ctx.font = `bold ${fontSize * 0.7}px 'Inter'`;
+        ctx.fillStyle = "white";
+        ctx.fillText(dateStr, drawX + timeWidth + 35, drawY - fontSize);
+        ctx.fillText(dayStr.toUpperCase(), drawX + timeWidth + 35, drawY - 5);
+
+        // Address
+        ctx.font = `${fontSize * 0.6}px 'Inter'`;
+        ctx.fillText(document.getElementById('address').value, drawX, drawY + fontSize);
+
+        // GPS
+        if (document.getElementById('showGps').checked) {
+            ctx.font = `${fontSize * 0.4}px monospace`;
+            ctx.fillStyle = "#aaa";
+            ctx.fillText(document.getElementById('manualCoord').value, drawX, drawY + fontSize * 1.8);
+        }
+
+        // Logo Right
+        ctx.textAlign = "right";
+        ctx.font = `bold ${fontSize * 0.8}px 'Inter'`;
+        ctx.fillStyle = document.getElementById('primaryColor').value;
+        ctx.fillText(document.getElementById('logoText').value, canvas.width - margin, canvas.height - margin);
+        ctx.textAlign = "left";
+    }
+
+    // Tải ảnh đơn
+    document.getElementById('downloadBtn').onclick = () => {
+        const link = document.createElement('a');
+        link.download = `Ducthuat_${Date.now()}.png`;
+        link.href = canvas.toDataURL();
+        link.click();
+    };
+
+    // Xuất ZIP hàng loạt
+    document.getElementById('zipBtn').onclick = async () => {
+        if (images.length === 0) return;
+        const zip = new JSZip();
+        const prog = document.getElementById('progBar');
+        document.getElementById('progContainer').style.display = 'block';
+
+        for (let i = 0; i < images.length; i++) {
+            currentIndex = i;
+            render();
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+            zip.file(`Photo_${i+1}.jpg`, dataUrl.split(',')[1], {base64: true});
+            prog.style.width = ((i + 1) / images.length * 100) + '%';
+        }
+
+        const content = await zip.generateAsync({type: "blob"});
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(content);
+        link.download = "Ducthuat_Batch_Images.zip";
+        link.click();
+        document.getElementById('progContainer').style.display = 'none';
+    };
+
+    // Kéo thả khung chữ
+    canvas.onmousedown = (e) => { isDragging = true; };
+    window.onmouseup = () => { isDragging = false; };
+    canvas.onmousemove = (e) => {
+        if (isDragging) {
+            const rect = canvas.getBoundingClientRect();
+            pos.x = (e.clientX - rect.left) / rect.width;
+            pos.y = (e.clientY - rect.top) / rect.height;
+            render();
+        }
+    };
+
+    // Hỗ trợ cảm ứng điện thoại
+    canvas.ontouchmove = (e) => {
+        e.preventDefault();
+        const rect = canvas.getBoundingClientRect();
+        const touch = e.touches[0];
+        pos.x = (touch.clientX - rect.left) / rect.width;
+        pos.y = (touch.clientY - rect.top) / rect.height;
+        render();
+    };
+
+    window.onload = initMap;
+</script>
+</body>
+</html>
