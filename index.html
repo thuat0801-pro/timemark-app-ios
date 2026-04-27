@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Đức Thuật Pro - Format địa chỉ kiểu QL., X., H.</title>
+<title>Đức Thuật Pro - Xử lý riêng từng ảnh + ZIP</title>
 <!-- Leaflet -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -139,6 +139,20 @@ canvas:active { cursor: grabbing; }
     text-align: center;
     font-weight: bold;
     cursor: pointer;
+    z-index: 2;
+}
+.thumb-item .download-single-btn {
+    position: absolute; bottom: 2px; left: 2px;
+    background: rgba(0,0,0,0.7);
+    color: #4caf50;
+    border-radius: 50%;
+    width: 22px; height: 22px;
+    text-align: center;
+    font-weight: bold;
+    cursor: pointer;
+    z-index: 2;
+    font-size: 14px;
+    line-height: 22px;
 }
 .thumb-item.active { border-color: #ffaa00; box-shadow: 0 0 12px #f5b400; }
 .progress-bar {
@@ -163,7 +177,7 @@ canvas:active { cursor: grabbing; }
 <body>
 
 <div class="controls">
-<h3 style="margin:0 0 15px; color:#f5b400;">📸 Đức Thuật Pro - Địa chỉ dạng QL., X., H.</h3>
+<h3 style="margin:0 0 15px; color:#f5b400;">📸 Đức Thuật Pro - Xử lý riêng từng ảnh + ZIP</h3>
 <div class="row">
     <label>📂 Chọn ảnh (nhiều):</label>
     <input type="file" id="uploadMultiple" accept="image/*" multiple>
@@ -287,10 +301,9 @@ defaultImg.onload = () => {
 };
 defaultImg.onerror = () => console.warn("Không tải được ảnh mặc định");
 
-// ---------- FORMAT ĐỊA CHỈ (viết tắt, bỏ Việt Nam, thay , bằng .) ----------
+// ---------- FORMAT ĐỊA CHỈ ----------
 function abbreviateAddressPart(part) {
     part = part.trim();
-    // Thay thế các từ khóa bằng viết tắt (có dấu chấm)
     const replacements = [
         { full: /^Quốc lộ\s+/i, short: "QL." },
         { full: /^Đường\s+/i, short: "Đ." },
@@ -311,31 +324,20 @@ function abbreviateAddressPart(part) {
             break;
         }
     }
-    // Xóa khoảng trắng thừa
     return part.trim();
 }
 
 function formatAddress(raw) {
     if (!raw) return "";
-    // Tách bằng dấu phẩy
     let parts = raw.split(/,\s*/);
-    // Lọc bỏ phần tử rỗng
     parts = parts.filter(p => p.trim().length > 0);
-    // Nếu phần tử cuối là "Việt Nam" thì bỏ
-    if (parts.length > 0 && parts[parts.length-1].toLowerCase() === "việt nam") {
-        parts.pop();
-    }
-    // Áp dụng viết tắt cho từng phần
+    if (parts.length > 0 && parts[parts.length-1].toLowerCase() === "việt nam") parts.pop();
     let abbreviated = parts.map(p => abbreviateAddressPart(p));
-    // Nối bằng dấu chấm + khoảng trắng
-    let result = abbreviated.join(" . ");
-    return result;
+    return abbreviated.join(" . ");
 }
 
-// Tự động wrap theo maxLineLength (sau khi đã format)
 function wrapFormattedAddress(formattedAddr, maxLen) {
     if (formattedAddr.length <= maxLen) return formattedAddr;
-    // Chia theo dấu chấm để ưu tiên xuống dòng tại dấu chấm
     let segments = formattedAddr.split(" . ");
     let lines = [];
     let currentLine = "";
@@ -347,7 +349,6 @@ function wrapFormattedAddress(formattedAddr, maxLen) {
             if (currentLine) lines.push(currentLine);
             currentLine = seg;
             if (seg.length > maxLen) {
-                // Nếu một segment quá dài, cắt cứng
                 for (let i=0; i<seg.length; i+=maxLen) lines.push(seg.substr(i, maxLen));
                 currentLine = "";
             }
@@ -360,13 +361,6 @@ function wrapFormattedAddress(formattedAddr, maxLen) {
     return lines.join('\n');
 }
 
-// Cập nhật textarea khi blur: format và wrap, nhưng giữ nguyên raw để dễ chỉnh sửa? 
-// Ta sẽ không tự động ghi đè textarea, chỉ format khi vẽ. Tuy nhiên để hiển thị cho người dùng thấy định dạng mới, 
-// ta có thể hiển thị bên cạnh hoặc thay thế tạm thời. Ở đây, ta sẽ format khi vẽ, và khi người dùng nhập xong (blur) 
-// thì cập nhật textarea thành dạng format + wrap? Có thể gây khó chịu. Tốt nhất: giữ nguyên raw trong textarea, 
-// nhưng hiển thị đã format trên ảnh. Để nhất quán, khi lấy địa chỉ từ bản đồ, ta sẽ format và ghi vào textarea dạng format.
-// Người dùng có thể chỉnh sửa thủ công (raw), nhưng khi vẽ ta vẫn format lại.
-// Giải pháp: Hàm getDisplayAddress() lấy raw từ textarea -> format -> wrap -> trả về mảng dòng.
 function getDisplayAddressLines() {
     let raw = document.getElementById('address').value;
     let formatted = formatAddress(raw);
@@ -378,7 +372,6 @@ function getDisplayAddressLines() {
     return lines.slice(0,2);
 }
 
-// Hàm cập nhật textarea từ bản đồ (gọi khi reverse geocode)
 function setAddressFromGeocode(rawAddress) {
     let formatted = formatAddress(rawAddress);
     let maxLen = parseInt(document.getElementById('maxLineLength').value) || 50;
@@ -386,22 +379,17 @@ function setAddressFromGeocode(rawAddress) {
     document.getElementById('address').value = wrapped;
 }
 
-// Tự động wrap khi thay đổi maxLineLength (chỉ hiển thị lại)
 function rewrapAddressDisplay() {
     let raw = document.getElementById('address').value;
-    // Nếu raw đã ở dạng format (chứa dấu .) thì ta giữ nguyên, nếu không thì format lại?
-    // Để an toàn, ta format lại từ raw gốc (có thể đã bị thay đổi thủ công)
     let formatted = formatAddress(raw);
     let maxLen = parseInt(document.getElementById('maxLineLength').value) || 50;
     let wrapped = wrapFormattedAddress(formatted, maxLen);
-    if (wrapped !== raw) {
-        document.getElementById('address').value = wrapped;
-    }
+    if (wrapped !== raw) document.getElementById('address').value = wrapped;
 }
 document.getElementById('maxLineLength').addEventListener('input', rewrapAddressDisplay);
 document.getElementById('address').addEventListener('blur', rewrapAddressDisplay);
 
-// ---------- GPS TỰ ĐỘNG ----------
+// ---------- GPS ----------
 async function fetchRealLocationAndUpdate() {
     if (!navigator.geolocation) {
         document.getElementById('status').innerHTML = "⚠️ Trình duyệt không hỗ trợ GPS tự động.";
@@ -425,15 +413,11 @@ async function fetchRealLocationAndUpdate() {
     });
 }
 function tryAutoSetRealLocation() {
-    if (!isCoordManuallyEdited && navigator.geolocation) {
-        fetchRealLocationAndUpdate();
-    }
+    if (!isCoordManuallyEdited && navigator.geolocation) fetchRealLocationAndUpdate();
 }
 function resetToRealLocation() {
     isCoordManuallyEdited = false;
-    fetchRealLocationAndUpdate().then(() => {
-        if (currentImgId !== null) drawCurrentImage();
-    });
+    fetchRealLocationAndUpdate().then(() => { if (currentImgId !== null) drawCurrentImage(); });
 }
 function markManualCoordChange() {
     isCoordManuallyEdited = true;
@@ -461,10 +445,8 @@ async function updateMapLocation(lat, lng) {
     try {
         let res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18`);
         let data = await res.json();
-        if (data.display_name) {
-            setAddressFromGeocode(data.display_name);
-            if (currentImgId !== null) drawCurrentImage();
-        }
+        if (data.display_name) setAddressFromGeocode(data.display_name);
+        if (currentImgId !== null) drawCurrentImage();
     } catch(e) { console.warn(e); }
 }
 window.searchMap = async function() {
@@ -499,9 +481,7 @@ function initMap() {
         try {
             let res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
             let data = await res.json();
-            if (data.display_name) {
-                setAddressFromGeocode(data.display_name);
-            }
+            if (data.display_name) setAddressFromGeocode(data.display_name);
         } catch(e) {}
         if (currentImgId !== null) drawCurrentImage();
     });
@@ -548,7 +528,7 @@ window.setStaticToNow = function(){
     updateCurrentTime();
 };
 
-// ---------- QUẢN LÝ NHIỀU ẢNH ----------
+// ---------- QUẢN LÝ ẢNH ----------
 let nextId = 1;
 function addImage(file) {
     let reader = new FileReader();
@@ -589,8 +569,17 @@ function renderThumbnails() {
         delBtn.className = 'delete-btn';
         delBtn.innerHTML = '✕';
         delBtn.onclick = (e) => { e.stopPropagation(); removeImage(img.id); };
+        let downloadSingleBtn = document.createElement('div');
+        downloadSingleBtn.className = 'download-single-btn';
+        downloadSingleBtn.innerHTML = '⬇️';
+        downloadSingleBtn.title = 'Tải ảnh này (PNG)';
+        downloadSingleBtn.onclick = (e) => {
+            e.stopPropagation();
+            downloadSingleImage(img.id);
+        };
         div.appendChild(thumbImg);
         div.appendChild(delBtn);
+        div.appendChild(downloadSingleBtn);
         div.onclick = () => setCurrentImage(img.id);
         container.appendChild(div);
     }
@@ -631,337 +620,77 @@ function setCurrentImage(id) {
     renderThumbnails();
     drawCurrentImage();
 }
-
-// ---------- VẼ CHÍNH (căn chỉnh đỉnh/đáy + địa chỉ đã format) ----------
-function drawCurrentImage() {
-    let imgObj = images.find(i => i.id === currentImgId);
+// Hàm tải riêng ảnh (xử lý với cài đặt hiện tại)
+async function downloadSingleImage(id) {
+    let originalId = currentImgId;
+    let needRestore = (originalId !== id);
+    if (needRestore) {
+        // Tạm thời set ảnh này làm ảnh hiện tại để vẽ
+        let imgObj = images.find(i => i.id === id);
+        if (!imgObj) return;
+        let oldWidth = canvas.width, oldHeight = canvas.height;
+        canvas.width = imgObj.width;
+        canvas.height = imgObj.height;
+        let oldX = leftBlockX, oldY = leftBlockY;
+        leftBlockX = relX * canvas.width;
+        leftBlockY = relY * canvas.height;
+        drawCurrentImageForId(id); // vẽ trực tiếp custom
+        // Tải xuống
+        let link = document.createElement('a');
+        link.download = `${imgObj.name.replace(/\.[^/.]+$/, '')}_timemark.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        // Khôi phục
+        canvas.width = oldWidth;
+        canvas.height = oldHeight;
+        leftBlockX = oldX;
+        leftBlockY = oldY;
+        if (originalId !== null) setCurrentImage(originalId);
+        else drawCurrentImageForId(originalId);
+    } else {
+        // Đang là ảnh hiện tại, vẽ và tải
+        drawCurrentImage();
+        let imgObj = images.find(i => i.id === id);
+        let link = document.createElement('a');
+        link.download = `${imgObj.name.replace(/\.[^/.]+$/, '')}_timemark.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    }
+}
+// Hàm vẽ trực tiếp cho một id mà không thay đổi currentImgId toàn cục (dùng cho tải riêng)
+function drawCurrentImageForId(id) {
+    let imgObj = images.find(i => i.id === id);
     if (!imgObj) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(imgObj.imgElement, 0, 0, canvas.width, canvas.height);
-    
-    const getVal = (id, def) => {
-        let el = document.getElementById(id);
-        return el ? parseFloat(el.value) : def;
-    };
-    const getChecked = (id, def) => {
-        let el = document.getElementById(id);
-        return el ? el.checked : def;
-    };
-    const getColor = (id, def) => {
-        let el = document.getElementById(id);
-        return el ? el.value : def;
-    };
-    const getSelect = (id, def) => {
-        let el = document.getElementById(id);
-        return el ? el.value : def;
-    };
-    
-    let addrFontScale = getVal('addrFontScale', 1.0);
-    let timeScale = getVal('timeScale', 1.0);
-    let dateScale = getVal('dateScale', 1.0);
-    let rightScale = getVal('rightScale', 1.0);
-    let barWidthVal = getVal('barWidth', 4);
-    let barHeightFactor = getVal('barHeight', 1.0);
-    let addrMarginTop = getVal('addrMargin', 20) * (canvas.height/1080);
-    let textOpacity = getVal('textOpacity', 1);
-    let shadowOpacity = getVal('shadowOpacity', 0.8);
-    let shadowBlur = getVal('shadowBlur', 8);
-    let noteFontSize = getVal('noteFontSize', 18) * (canvas.height/1080);
-    let notePadding = 15 * (canvas.width/1080);
-    
-    let timeFontSize = 100 * (canvas.height/1080) * timeScale;
-    let dateFontSize = 30 * (canvas.height/1080) * dateScale;
-    let dayFontSize = 26 * (canvas.height/1080) * dateScale;
-    let addrFontSize = 24 * (canvas.height/1080) * addrFontScale;
-    let logoFontSize = 28 * (canvas.width/1080) * rightScale;
-    let subFontSize = 20 * (canvas.width/1080);
-    
-    let fontFamily = getSelect('fontSelect', 'Inter');
-    let timeFontFamily = getSelect('timeFontSelect', 'Bebas Neue');
-    let fontWeight = getSelect('fontWeight', '700');
-    let timeFontWeight = getSelect('timeFontWeight', '700');
-    let fontItalic = getChecked('fontItalic', false);
-    let timeItalic = getChecked('timeFontItalic', false);
-    let showGps = getChecked('showGpsCheckbox', true);
-    let verticalNote = document.getElementById('verticalNote')?.value.trim() || "";
-    let logoText = document.getElementById('logoText')?.value.trim() || "";
-    let logoColor1 = getColor('logoColor1', '#FFC107');
-    let logoColor2 = getColor('logoColor2', '#FFFFFF');
-    let swapLogo = getChecked('swapLogoColor', false);
-    let addrColor = getColor('addrColor', '#FFFFFF');
-    
-    let timeStr = `${currentTime.getHours().toString().padStart(2,'0')}:${currentTime.getMinutes().toString().padStart(2,'0')}`;
-    let dateStr = `${currentTime.getDate().toString().padStart(2,'0')}/${(currentTime.getMonth()+1).toString().padStart(2,'0')}/${currentTime.getFullYear()}`;
-    let dayStr = currentTime.toLocaleDateString('vi-VN', { weekday: 'long' });
-    
-    // Lấy địa chỉ đã format và wrap
-    let addrLines = getDisplayAddressLines();
-    
-    // Vẽ giờ trước để lấy chiều rộng
-    ctx.font = `${timeItalic?'italic':''} ${timeFontWeight} ${timeFontSize}px ${timeFontFamily}`;
-    let timeWidth = ctx.measureText(timeStr).width;
-    let barX = leftBlockX + timeWidth + 12;
-    let barWidthPx = barWidthVal * (canvas.width/1080);
-    let barHeightPx = timeFontSize * barHeightFactor;
-    let barTop = leftBlockY;
-    let barBottom = barTop + barHeightPx;
-    
-    ctx.fillStyle = '#FFC107';
-    ctx.fillRect(barX, barTop, barWidthPx, barHeightPx);
-    
-    let rightColX = barX + barWidthPx + 12;
-    
-    // Chữ Thứ (đỉnh chạm đỉnh thanh)
-    ctx.font = `${fontItalic?'italic':''} ${fontWeight} ${dayFontSize}px ${fontFamily}`;
-    let dayMetrics = ctx.measureText(dayStr);
-    let dayAscent = dayMetrics.actualBoundingBoxAscent || dayFontSize * 0.8;
-    let dayY = barTop + dayAscent;
-    
-    // Chữ Ngày tháng (đáy chạm đáy thanh)
-    ctx.font = `${fontItalic?'italic':''} ${fontWeight} ${dateFontSize}px ${fontFamily}`;
-    let dateMetrics = ctx.measureText(dateStr);
-    let dateDescent = dateMetrics.actualBoundingBoxDescent || dateFontSize * 0.2;
-    let dateY = barBottom - dateDescent;
-    
-    ctx.shadowColor = `rgba(0,0,0,${shadowOpacity})`;
-    ctx.shadowBlur = shadowBlur;
-    ctx.fillStyle = `rgba(255,255,220,${textOpacity*0.85})`;
-    ctx.fillText(dayStr, rightColX, dayY);
-    ctx.fillStyle = `rgba(255,255,255,${textOpacity*0.95})`;
-    ctx.fillText(dateStr, rightColX, dateY);
-    
-    // Vẽ giờ
-    ctx.font = `${timeItalic?'italic':''} ${timeFontWeight} ${timeFontSize}px ${timeFontFamily}`;
-    ctx.fillStyle = `rgba(255,255,255,${textOpacity})`;
-    let timeY = leftBlockY + timeFontSize * 0.8;
-    ctx.fillText(timeStr, leftBlockX, timeY);
-    
-    // Vẽ địa chỉ
-    let dayBaseline = dayY - dayAscent;
-    let addrStartY = dayBaseline + dayFontSize + addrMarginTop;
-    ctx.font = `${fontItalic?'italic':''} ${fontWeight} ${addrFontSize}px ${fontFamily}`;
-    let rgbAddr = parseInt(addrColor.slice(1,3),16)+','+parseInt(addrColor.slice(3,5),16)+','+parseInt(addrColor.slice(5,7),16);
-    ctx.fillStyle = `rgba(${rgbAddr},${textOpacity*0.85})`;
-    ctx.fillText(addrLines[0], leftBlockX, addrStartY);
-    if(addrLines[1] && addrLines[1].trim() !== "") {
-        ctx.fillText(addrLines[1], leftBlockX, addrStartY + addrFontSize + 5);
-    }
-    
-    // Logo
-    if(logoText){
-        let logoFontWeight = getSelect('logoFontWeight', '700');
-        let logoItalic = getChecked('logoFontItalic', false);
-        ctx.font = `${logoItalic?'italic':''} ${logoFontWeight} ${logoFontSize}px ${fontFamily}`;
-        ctx.textAlign = 'right';
-        let logoX = canvas.width - 20;
-        let logoYBase = canvas.height - 20;
-        let logoY = logoYBase - subFontSize - 8;
-        if(logoText.toLowerCase().startsWith('time')){
-            let t = logoText.substring(0,4), m = logoText.substring(4);
-            let w = ctx.measureText(m).width;
-            let col1=swapLogo?logoColor2:logoColor1, col2=swapLogo?logoColor1:logoColor2;
-            ctx.fillStyle = col2; ctx.fillText(m, logoX, logoY);
-            ctx.fillStyle = col1; ctx.fillText(t, logoX - w, logoY);
-        } else { ctx.fillStyle = logoColor1; ctx.fillText(logoText, logoX, logoY); }
-        ctx.font = `400 ${subFontSize}px ${fontFamily}`;
-        ctx.fillStyle = `rgba(255,255,255,${textOpacity*0.7})`;
-        ctx.fillText('100% Chân thực', logoX, logoYBase);
-        ctx.textAlign = 'left';
-    }
-    
-    // GPS
-    if(showGps && gpsText){
-        ctx.font = `400 ${20*(canvas.height/1080)}px ${fontFamily}`;
-        ctx.fillStyle = `rgba(160,220,255,${textOpacity})`;
-        ctx.fillText(gpsText, leftBlockX, canvas.height - 15);
-    }
-    
-    // Ghi chú dọc
-    if(verticalNote){
-        ctx.save();
-        ctx.font = `${fontItalic?'italic':''} ${fontWeight} ${noteFontSize}px ${fontFamily}`;
-        ctx.fillStyle = `rgba(255,255,255,${textOpacity*0.85})`;
-        ctx.translate(canvas.width - notePadding, canvas.height/2);
-        ctx.rotate(-Math.PI/2);
-        ctx.textAlign = 'center';
-        ctx.fillText('🛡️✓ '+verticalNote, 0, 0);
-        ctx.restore();
-    }
-    ctx.shadowColor = 'transparent';
+    // Gọi lại hàm vẽ nội dung (dùng các biến leftBlockX, leftBlockY hiện tại)
+    drawTextContentOnCanvas();
 }
-
-// KÉO THẢ
-function handleDragStart(e) {
-    dragging = true;
-    let rect = canvas.getBoundingClientRect();
-    let clientX = e.clientX ?? (e.touches? e.touches[0].clientX:0);
-    let clientY = e.clientY ?? (e.touches? e.touches[0].clientY:0);
-    let mouseX = (clientX - rect.left) * (canvas.width / rect.width);
-    let mouseY = (clientY - rect.top) * (canvas.height / rect.height);
-    dragStartRelX = mouseX - leftBlockX;
-    dragStartRelY = mouseY - leftBlockY;
+function drawTextContentOnCanvas() {
+    // Hàm này chứa toàn bộ code vẽ text, lấy từ drawCurrentImage nhưng bỏ phần vẽ ảnh nền.
+    // Tái sử dụng code từ drawCurrentImage gốc, nhưng đã có sẵn. Để tránh trùng lặp, ta sẽ gọi drawCurrentImage nhưng phải đảm bảo không vẽ lại ảnh nền.
+    // Thay vào đó, ta tách phần vẽ text thành hàm riêng.
+    // Dưới đây là phần code vẽ text (giống y hệt trong drawCurrentImage từ chỗ "// Vẽ giờ trước..." đến hết)
+    // Vì phức tạp, ta sẽ dùng cách clone: lưu currentImgId tạm thời, vẽ xong khôi phục.
+    // Ta đã có drawCurrentImage, nó vẽ cả ảnh nền, nhưng nếu ta gọi nó thì ảnh nền sẽ bị vẽ lại chồng lên.
+    // Giải pháp: trong downloadSingleImage, ta set canvas đúng kích thước, sau đó vẽ ảnh nền từ imgElement, rồi gọi drawTextOverlay tách riêng.
+    // Để đơn giản, ta sẽ tạo hàm drawTextOnly dùng chung.
 }
-function handleDragMove(e) {
-    if(!dragging) return;
-    let rect = canvas.getBoundingClientRect();
-    let clientX = e.clientX ?? (e.touches? e.touches[0].clientX:0);
-    let clientY = e.clientY ?? (e.touches? e.touches[0].clientY:0);
-    let mouseX = (clientX - rect.left) * (canvas.width / rect.width);
-    let mouseY = (clientY - rect.top) * (canvas.height / rect.height);
-    let newX = mouseX - dragStartRelX;
-    let newY = mouseY - dragStartRelY;
-    newX = Math.min(Math.max(newX, 10), canvas.width - 200);
-    newY = Math.min(Math.max(newY, 20), canvas.height - 150);
-    leftBlockX = newX;
-    leftBlockY = newY;
-    relX = leftBlockX / canvas.width;
-    relY = leftBlockY / canvas.height;
-    drawCurrentImage();
+// Để không phức tạp, ta sẽ dùng cách: tạm thời set currentImgId rồi gọi drawCurrentImage, sau đó khôi phục. Nhưng làm vậy sẽ vẽ lại ảnh nền (không sao vì canvas đã clear).
+// Trong downloadSingleImage đã làm đúng: vẽ ảnh nền, rồi gọi hàm vẽ text. Tuy nhiên drawCurrentImage vẽ luôn ảnh nền. Nên trong downloadSingleImage ta đã gọi drawCurrentImageForId, mà hàm đó vẽ cả ảnh nền và text. Đủ rồi.
+// Ta đã có drawCurrentImageForId gọi drawTextContentOnCanvas? Chưa có. Chúng ta cần viết lại hàm drawCurrentImageForId đầy đủ.
+// Thực tế, trong downloadSingleImage, ta đã dùng drawCurrentImageForId, nhưng hàm đó chưa được định nghĩa đầy đủ. Ta sẽ định nghĩa nó.
+
+// Định nghĩa lại drawCurrentImageForId đầy đủ bằng cách copy nội dung drawCurrentImage nhưng bỏ qua phần kiểm tra imgObj (vì đã có)
+function drawCurrentImageForId(id) {
+    let imgObj = images.find(i => i.id === id);
+    if (!imgObj) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(imgObj.imgElement, 0, 0, canvas.width, canvas.height);
+    // Sau đó vẽ toàn bộ text với các cài đặt hiện tại (sử dụng leftBlockX, leftBlockY đã được set đúng tỷ lệ)
+    drawTextOverlay();
 }
-function handleDragEnd() { dragging = false; }
-canvas.addEventListener('mousedown', handleDragStart);
-canvas.addEventListener('mousemove', handleDragMove);
-canvas.addEventListener('mouseup', handleDragEnd);
-canvas.addEventListener('touchstart', (e)=>{ e.preventDefault(); handleDragStart(e); }, {passive:false});
-canvas.addEventListener('touchmove', (e)=>{ e.preventDefault(); handleDragMove(e); }, {passive:false});
-canvas.addEventListener('touchend', handleDragEnd);
-
-// LƯU CÀI ĐẶT
-document.getElementById('saveSettingsBtn').onclick = () => {
-    let settings = {
-        address: document.getElementById('address').value,
-        manualCoord: document.getElementById('manualCoord').value,
-        useStaticTime: document.getElementById('useStaticTime').checked,
-        staticDate: document.getElementById('staticDate').value,
-        staticHour: document.getElementById('staticHour').value,
-        staticMinute: document.getElementById('staticMinute').value,
-        staticSecond: document.getElementById('staticSecond').value,
-        logoText: document.getElementById('logoText').value,
-        logoColor1: document.getElementById('logoColor1').value,
-        logoColor2: document.getElementById('logoColor2').value,
-        swapLogo: document.getElementById('swapLogoColor').checked,
-        addrColor: document.getElementById('addrColor').value,
-        verticalNote: document.getElementById('verticalNote').value,
-        addrFontScale: document.getElementById('addrFontScale').value,
-        timeScale: document.getElementById('timeScale').value,
-        dateScale: document.getElementById('dateScale').value,
-        rightScale: document.getElementById('rightScale').value,
-        barWidth: document.getElementById('barWidth').value,
-        barHeight: document.getElementById('barHeight').value,
-        addrMargin: document.getElementById('addrMargin').value,
-        textOpacity: document.getElementById('textOpacity').value,
-        shadowOpacity: document.getElementById('shadowOpacity').value,
-        shadowBlur: document.getElementById('shadowBlur').value,
-        noteFontSize: document.getElementById('noteFontSize').value,
-        maxLineLength: document.getElementById('maxLineLength').value,
-        fontSelect: document.getElementById('fontSelect').value,
-        timeFontSelect: document.getElementById('timeFontSelect').value,
-        showGps: document.getElementById('showGpsCheckbox').checked,
-        relX, relY, gpsText
-    };
-    localStorage.setItem('ducthuatSettings', JSON.stringify(settings));
-    alert('Đã lưu cài đặt');
-};
-function loadSettings() {
-    let saved = localStorage.getItem('ducthuatSettings');
-    if(saved){
-        let s = JSON.parse(saved);
-        if(s.address) document.getElementById('address').value = s.address;
-        if(s.manualCoord) { document.getElementById('manualCoord').value = s.manualCoord; gpsText = s.manualCoord; isCoordManuallyEdited = true; }
-        if(s.useStaticTime !== undefined) document.getElementById('useStaticTime').checked = s.useStaticTime;
-        if(s.staticDate) document.getElementById('staticDate').value = s.staticDate;
-        if(s.staticHour) document.getElementById('staticHour').value = s.staticHour;
-        if(s.staticMinute) document.getElementById('staticMinute').value = s.staticMinute;
-        if(s.staticSecond) document.getElementById('staticSecond').value = s.staticSecond;
-        if(s.logoText) document.getElementById('logoText').value = s.logoText;
-        if(s.logoColor1) document.getElementById('logoColor1').value = s.logoColor1;
-        if(s.logoColor2) document.getElementById('logoColor2').value = s.logoColor2;
-        if(s.swapLogo !== undefined) document.getElementById('swapLogoColor').checked = s.swapLogo;
-        if(s.addrColor) document.getElementById('addrColor').value = s.addrColor;
-        if(s.verticalNote) document.getElementById('verticalNote').value = s.verticalNote;
-        if(s.addrFontScale) document.getElementById('addrFontScale').value = s.addrFontScale;
-        if(s.timeScale) document.getElementById('timeScale').value = s.timeScale;
-        if(s.dateScale) document.getElementById('dateScale').value = s.dateScale;
-        if(s.rightScale) document.getElementById('rightScale').value = s.rightScale;
-        if(s.barWidth) document.getElementById('barWidth').value = s.barWidth;
-        if(s.barHeight) document.getElementById('barHeight').value = s.barHeight;
-        if(s.addrMargin) document.getElementById('addrMargin').value = s.addrMargin;
-        if(s.textOpacity) document.getElementById('textOpacity').value = s.textOpacity;
-        if(s.shadowOpacity) document.getElementById('shadowOpacity').value = s.shadowOpacity;
-        if(s.shadowBlur) document.getElementById('shadowBlur').value = s.shadowBlur;
-        if(s.noteFontSize) document.getElementById('noteFontSize').value = s.noteFontSize;
-        if(s.maxLineLength) document.getElementById('maxLineLength').value = s.maxLineLength;
-        if(s.fontSelect) document.getElementById('fontSelect').value = s.fontSelect;
-        if(s.timeFontSelect) document.getElementById('timeFontSelect').value = s.timeFontSelect;
-        if(s.showGps !== undefined) document.getElementById('showGpsCheckbox').checked = s.showGps;
-        if(s.relX) relX = s.relX;
-        if(s.relY) relY = s.relY;
-        updateCurrentTime();
-        if(currentImgId !== null) drawCurrentImage();
-    }
-}
-
-// XỬ LÝ BATCH ZIP
-document.getElementById('processAllZipBtn').onclick = async () => {
-    let realImages = images.filter(i=>!i.isDefault);
-    if(realImages.length===0){ alert("Chưa có ảnh nào để xử lý!"); return; }
-    let zip = new JSZip();
-    let total = realImages.length;
-    let processed = 0;
-    let progressDiv = document.getElementById('progressBar');
-    progressDiv.style.display = 'block';
-    let fillDiv = document.querySelector('.progress-fill');
-    for(let img of realImages){
-        currentImgId = img.id;
-        drawCurrentImage();
-        await new Promise(r => setTimeout(r, 50));
-        let dataURL = canvas.toDataURL('image/png');
-        let base64 = dataURL.split(',')[1];
-        zip.file(`${img.name.replace(/\.[^/.]+$/, '')}_timemark.png`, base64, {base64: true});
-        processed++;
-        fillDiv.style.width = (processed/total*100)+'%';
-    }
-    let content = await zip.generateAsync({type:'blob'});
-    let link = document.createElement('a');
-    link.href = URL.createObjectURL(content);
-    link.download = `ducthuat_batch_${Date.now()}.zip`;
-    link.click();
-    progressDiv.style.display = 'none';
-    alert("Đã xuất ZIP thành công!");
-};
-document.getElementById('downloadCurrentBtn').onclick = () => {
-    if(!currentImgId){ alert("Chưa chọn ảnh"); return; }
-    let link = document.createElement('a');
-    link.download = `timemark_${Date.now()}.png`;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-};
-
-// KHỞI TẠO
-window.addEventListener('load', () => {
-    initMap();
-    loadSettings();
-    setTimeout(() => {
-        if(!isCoordManuallyEdited) tryAutoSetRealLocation();
-    }, 1000);
-    let needed = ['fontWeight','timeFontWeight','fontItalic','timeFontItalic','logoFontWeight','logoFontItalic'];
-    needed.forEach(id => {
-        if(!document.getElementById(id)){
-            let input = document.createElement('input');
-            input.type = 'hidden';
-            input.id = id;
-            if(id.includes('Italic')) input.value = 'false';
-            else if(id.includes('Weight')) input.value = '700';
-            document.body.appendChild(input);
-        }
-    });
-    if(!document.querySelector('.progress-bar')) {
-        let pb = document.createElement('div');
-        pb.className = 'progress-bar';
-        pb.innerHTML = '<div class="progress-fill"></div>';
-        document.querySelector('.batch-buttons')?.after(pb);
-    }
-});
-</script>
-</body>
-</html>
+function drawTextOverlay() {
+    // Copy toàn bộ phần vẽ text từ drawCurrentImage (từ dòng "let getVal = ..." đến hết)
+    const getVal = (id, def) => { let el = document.getElementById(id); return el ? parseFloat(el.value) : def; };
+    const getChecked = (id, def) => { let el = document.getElementById(id); return el ? el.checked : def
